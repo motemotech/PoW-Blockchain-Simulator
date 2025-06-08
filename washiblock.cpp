@@ -10,6 +10,9 @@ using namespace std;
 
 #define MAX_RN 10
 #define MAX_N 1000
+#define DIFFICULTY_ADJUSTMENT_INTERVAL 2016  // 2016ブロックごとに調整
+#define TARGET_BLOCK_TIME 600000            // 10分（ミリ秒）
+#define TARGET_TIMESPAN (DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME) // 2週間相当
 using namespace std;
 typedef unsigned long long ull;
 typedef long long ll;
@@ -20,6 +23,8 @@ struct block {
     int minter; 
     ll time;
     ll rand;
+    double difficulty;  // このブロック生成時の難易度
+    ll lastEpochTime;   // 前回の難易度調整時刻（2016ブロック前）
 };
 
 struct task {
@@ -45,12 +50,12 @@ ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
 
-
 void chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void mainChain(block* block1, int tie);
 void simulation(int tie);
 void reset();
 ll prop(int i, int j);
+double calculateDifficulty(block* latestBlock, int nodeId);  // ノード固有の難易度計算関数
 
 
 std::random_device seed_gen;
@@ -110,6 +115,58 @@ ll prop(int i, int j) {
     else return delay;
 }
 
+// ノード固有の難易度計算関数の実装
+double calculateDifficulty(block* latestBlock, int nodeId) {
+    if (latestBlock == nullptr || latestBlock->height == 0) {
+        return 1.0; // ジェネシスブロックまたはnullptrの場合は初期難易度
+    }
+    
+    // 2016ブロックごとに調整をチェック
+    if (latestBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL != 0) {
+        return latestBlock->difficulty; // 調整タイミングでない場合は現在の難易度を維持
+    }
+    
+    // 初回調整の場合（height < 2016の場合）
+    if (latestBlock->height < DIFFICULTY_ADJUSTMENT_INTERVAL) {
+        return latestBlock->difficulty; // 十分なブロック履歴がない場合は現在の難易度を維持
+    }
+    
+    // lastEpochTimeを使用して効率的に前回調整時刻を取得
+    ll lastEpochTime = latestBlock->lastEpochTime;
+    ll actualTimespan = latestBlock->time - lastEpochTime;
+    double ratio = (double)actualTimespan / (double)TARGET_TIMESPAN;
+    
+    cout << "=== Difficulty Adjustment (Node " << nodeId << ") ===" << endl;
+    cout << "Block height: " << latestBlock->height << endl;
+    cout << "Last epoch time: " << lastEpochTime << " ms" << endl;
+    cout << "Current time: " << latestBlock->time << " ms" << endl;
+    cout << "Actual timespan: " << actualTimespan << " ms" << endl;
+    cout << "Target timespan: " << TARGET_TIMESPAN << " ms" << endl;
+    cout << "Ratio (T): " << ratio << endl;
+    cout << "Current difficulty: " << latestBlock->difficulty << endl;
+    
+    double newDifficulty;
+    
+    if (ratio < 0.25) {
+        // ブロック生成が早すぎる → 難易度を4倍にする
+        newDifficulty = latestBlock->difficulty * 4.0;
+        cout << "Too fast! Difficulty increased by 4x" << endl;
+    } else if (ratio > 4.0) {
+        // ブロック生成が遅すぎる → 難易度を1/4にする
+        newDifficulty = latestBlock->difficulty * 0.25;
+        cout << "Too slow! Difficulty decreased by 4x" << endl;
+    } else {
+        // 比例調整: 新しい難易度 = 現在の難易度 * ratio
+        newDifficulty = latestBlock->difficulty / ratio;
+        cout << "Proportional adjustment" << endl;
+    }
+    
+    cout << "New difficulty: " << newDifficulty << endl;
+    cout << "=================================================" << endl;
+    
+    return newDifficulty;
+}
+
 void mainChain(block* block1, int tie) {
     if (block1->height != endRound) {
         ll height = block1->height;
@@ -150,7 +207,7 @@ void simulation(int tie) {
       std::vector<task*>,
       decltype(compare) // 比較関数オブジェクトを指定
     > taskQue {compare};
-
+    
     std:queue<block*> blockQue;
 
     std::queue<block*> blockStore;
@@ -161,12 +218,16 @@ void simulation(int tie) {
     genesisBlock->prevBlock = nullptr;
     genesisBlock->height = 0;
     genesisBlock->minter = -1;
+    genesisBlock->difficulty = 1.0;  // ジェネシスブロックの初期難易度設定
+    genesisBlock->lastEpochTime = 0;  // ジェネシスブロックの初期時刻
 
     for (int i = 0;i < N;i++) {
         currentBlock[i] = genesisBlock;
 
         task* nextBlockTask = new task;
-        nextBlockTask->time = (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[i]);
+        // 初期難易度を考慮したマイニング時間の計算
+        double initialDifficulty = 1.0;
+        nextBlockTask->time = (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[i] * initialDifficulty);
         nextBlockTask->flag = 0;
         nextBlockTask->minter = i;
         taskQue.push(nextBlockTask);
@@ -191,6 +252,30 @@ void simulation(int tie) {
             newBlock->minter = minter;
             newBlock->time = currentTime;
             newBlock->rand = dist1(engine) * (LLONG_MAX - 10);
+            
+            // このノードのローカルな難易度を計算
+            double localDifficulty = calculateDifficulty(currentBlock[minter], minter);
+            newBlock->difficulty = localDifficulty;
+            
+            // lastEpochTimeの設定
+            if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 0 && newBlock->height > 0) {
+                // 難易度調整タイミングの場合、前回の調整時刻を設定
+                newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
+            } else {
+                // 通常のブロックの場合、親ブロックのlastEpochTimeを継承
+                if (newBlock->height == DIFFICULTY_ADJUSTMENT_INTERVAL) {
+                    // 初回の難易度調整の場合
+                    newBlock->lastEpochTime = 0; // ジェネシスブロック時刻
+                } else if (newBlock->height > DIFFICULTY_ADJUSTMENT_INTERVAL && 
+                          (currentBlock[minter]->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 0)) {
+                    // 親が調整ブロックだった場合、その時刻を記録
+                    newBlock->lastEpochTime = currentBlock[minter]->time;
+                } else {
+                    // 通常の場合、親のlastEpochTimeを継承
+                    newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
+                }
+            }
+            
             currentBlock[minter] = newBlock;
 
             blockQue.push(newBlock);
@@ -205,7 +290,9 @@ void simulation(int tie) {
             } else {
                 nextBlockTask = new task;
             }
-            nextBlockTask->time = currentTime + (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[minter]);
+            // 次のマイニング時間を計算（現在のノードの難易度に基づく）
+            double nextDifficulty = calculateDifficulty(newBlock, minter);
+            nextBlockTask->time = currentTime + (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[minter] * nextDifficulty);
             nextBlockTask->flag = 0;
             nextBlockTask->minter = minter;
             taskQue.push(nextBlockTask);
@@ -231,7 +318,7 @@ void simulation(int tie) {
             } else { // fork
                 
             }
-            cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << endl;
+            cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
         } else { // propagation
             cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
             int to = currentTask->to;
