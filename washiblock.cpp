@@ -50,7 +50,7 @@ ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
 
-void chooseMainchain(block* block1, block* block2, int from, int to, int tie);
+bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void mainChain(block* block1, int tie);
 void simulation(int tie);
 void reset();
@@ -92,20 +92,27 @@ int main(void) {
     return 0;
 }
 
-void chooseMainchain(block* block1, block* block2, int from, int to, int tie) {
+bool chooseMainchain(block* block1, block* block2, int from, int to, int tie) {
+    block* originalBlock = currentBlock[to];
+    
     if (block1->height > block2->height) {
         currentBlock[to] = block1;
+        return (originalBlock != block1);
     }
 
     if (block1->height == block2->height){
         if (tie == 1 && block2->minter != to && block1->rand < block2->rand) { // for the random rule
             currentBlock[to] = block1;
+            return (originalBlock != block1);
         }
 
-        if (tie == 2 && block2->minter != to && block1->time > block2->time) currentBlock[to] = block1; // for the last-generated rule
+        if (tie == 2 && block2->minter != to && block1->time > block2->time) {
+            currentBlock[to] = block1;
+            return (originalBlock != block1);
+        }
     }
 
-    return;
+    return false; // メインチェーンは変更されなかった
 }
 
 
@@ -323,7 +330,34 @@ void simulation(int tie) {
             cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
             int to = currentTask->to;
             int from = currentTask->from;
-            chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
+            bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
+            
+            // メインチェーンが変更された場合、新しい難易度に基づいてマイニングを再開
+            if (mainchainChanged) {
+                // 現在のマイニングタスクを無効化（次回の実行時にスキップされる）
+                currentMiningTask[to] = nullptr;
+                
+                // 新しいメインチェーンの最新ブロックに記録されている難易度を使用
+                double newDifficulty = currentBlock[to]->difficulty;
+                
+                // 新しいマイニングタスクを作成
+                task* newMiningTask;
+                if (taskStore.size() > 0) {
+                    newMiningTask = taskStore.front();
+                    taskStore.pop();
+                } else {
+                    newMiningTask = new task;
+                }
+                
+                // 新しい難易度でマイニング時間を計算
+                newMiningTask->time = currentTime + (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[to] * newDifficulty);
+                newMiningTask->flag = 0;
+                newMiningTask->minter = to;
+                taskQue.push(newMiningTask);
+                currentMiningTask[to] = newMiningTask;
+                
+                cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
+            }
         }
 
         taskStore.push(currentTask);
