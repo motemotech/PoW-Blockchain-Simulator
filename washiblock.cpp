@@ -292,7 +292,17 @@ void simulation(int tie) {
 
         if (currentTask->flag == 0) { //block generation
             int minter = currentTask->minter;
-            if (currentMiningTask[minter] != currentTask) continue;
+            if (minter == 0) {
+                cout << "--- MONITOR(minter 0): Processing a generation task scheduled for time " << currentTask->time << ". Is it valid? " << (currentMiningTask[minter] == currentTask ? "Yes" : "No") << endl;
+            }
+            if (currentMiningTask[minter] != currentTask) {
+                // DEBUG: Log why a mining task is skipped
+                cout << "--- DEBUG: Skipping obsolete mining task for minter " << minter 
+                     << ". Task time: " << currentTask->time 
+                     << ". Current valid task pointer: " << currentMiningTask[minter] 
+                     << ". This task pointer: " << currentTask << endl;
+                continue;
+            }
             block* newBlock;
             if (blockStore.size() > 0) {
                 newBlock = blockStore.front();blockStore.pop();
@@ -350,6 +360,10 @@ void simulation(int tie) {
             taskQue.push(nextBlockTask);
             currentMiningTask[minter] = nextBlockTask;
 
+            if (minter == 0) {
+                cout << "--- MONITOR(minter 0): Generated a new block. Next mining task is scheduled for time " << nextBlockTask->time << endl;
+            }
+
             for (int i = 0;i < N;i++) { // propagation task
                 task* nextPropTask;
                 if (taskStore.size() > 0) {
@@ -379,8 +393,10 @@ void simulation(int tie) {
             
             // メインチェーンが変更された場合、新しい難易度に基づいてマイニングを再開
             if (mainchainChanged) {
-                // 現在のマイニングタスクを無効化（次回の実行時にスキップされる）
-                currentMiningTask[to] = nullptr;
+                if (to == 0) {
+                    cout << "--- MONITOR(minter 0): Mainchain changed. Restarting mining." << endl;
+                }
+                // 現在のマイニングタスクは、新しいタスクを割り当てることで無効化される
                 
                 // 新しいメインチェーンの最新ブロックに記録されている難易度を使用
                 double newDifficulty = currentBlock[to]->difficulty;
@@ -406,6 +422,20 @@ void simulation(int tie) {
         }
 
         taskStore.push(currentTask);
+    }
+
+    // DEBUG: Check if the task queue is empty and log the state of mining tasks
+    if (taskQue.empty()) {
+        cout << "--- DEBUG: Task queue is empty. Simulation stopped. ---" << endl;
+        cout << "Current round: " << currentRound << ", End round: " << endRound << endl;
+        for (int i = 0; i < N; ++i) {
+            cout << "Node " << i << ": currentMiningTask pointer is " << currentMiningTask[i] << endl;
+            if (currentMiningTask[i] != nullptr) {
+                cout << "  -> Task details: time=" << currentMiningTask[i]->time 
+                     << ", flag=" << currentMiningTask[i]->flag 
+                     << ", minter=" << currentMiningTask[i]->minter << endl;
+            }
+        }
     }
     
     // CSVファイルをクローズ
