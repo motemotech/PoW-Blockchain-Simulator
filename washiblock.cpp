@@ -40,14 +40,14 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 6000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 600000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
 ll hashrate[MAX_N];
 ll totalHashrate;
 ll numMain[3][MAX_N];
-ll endRound = 100000;
+ll endRound = 1000000;
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
@@ -132,6 +132,7 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
     }
     
     // 2016ブロックごとに調整をチェック
+    
     if (latestBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL != 0) {
         return latestBlock->difficulty; // 調整タイミングでない場合は現在の難易度を維持
     }
@@ -142,37 +143,18 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
     }
     
     // lastEpochTimeを使用して効率的に前回調整時刻を取得
-    ll lastEpochTime = latestBlock->lastEpochTime;
-    ll actualTimespan = latestBlock->time - lastEpochTime;
-    double ratio = (double)actualTimespan / (double)TARGET_TIMESPAN;
-    
-    cout << "=== Difficulty Adjustment (Node " << nodeId << ") ===" << endl;
-    cout << "Block height: " << latestBlock->height << endl;
-    cout << "Last epoch time: " << lastEpochTime << " ms" << endl;
-    cout << "Current time: " << latestBlock->time << " ms" << endl;
-    cout << "Actual timespan: " << actualTimespan << " ms" << endl;
-    cout << "Target timespan: " << TARGET_TIMESPAN << " ms" << endl;
-    cout << "Ratio (T): " << ratio << endl;
-    cout << "Current difficulty: " << latestBlock->difficulty << endl;
-    
-    double newDifficulty;
-    
-    if (ratio < 0.25) {
-        // ブロック生成が早すぎる → 難易度を4倍にする
-        newDifficulty = latestBlock->difficulty * 4.0;
-        cout << "Too fast! Difficulty increased by 4x" << endl;
-    } else if (ratio > 4.0) {
-        // ブロック生成が遅すぎる → 難易度を1/4にする
-        newDifficulty = latestBlock->difficulty * 0.25;
-        cout << "Too slow! Difficulty decreased by 4x" << endl;
-    } else {
-        // 比例調整: 新しい難易度 = 現在の難易度 * ratio
-        newDifficulty = latestBlock->difficulty / ratio;
-        cout << "Proportional adjustment" << endl;
-    }
-    
-    cout << "New difficulty: " << newDifficulty << endl;
-    cout << "=================================================" << endl;
+    cout << "latestBlock->time: " << latestBlock->time << endl;
+    cout << "latestBlock->lastEpochTime: " << latestBlock->lastEpochTime << endl;
+    ll actualTimespan = latestBlock->time - latestBlock->lastEpochTime;
+    cout << "actualTimespan: " << actualTimespan << endl;
+    // 2016ブロック分の目標時間と実際にかかった時間の比率を計算
+    double ratio = (double)TARGET_TIMESPAN / (double)actualTimespan;
+    cout << "ratio: " << ratio << endl;
+    // 難易度の急激な変動を防ぐため、調整率を制限 (0.25 ~ 4.0)
+    if (ratio > 4.0) ratio = 4.0;
+    if (ratio < 0.25) ratio = 0.25;
+
+    double newDifficulty = latestBlock->difficulty * ratio;
     
     return newDifficulty;
 }
@@ -220,8 +202,9 @@ void simulation(int tie) {
     
     std::queue<block*> blockQue;
 
-    std::queue<block*> blockStore;
-    std::queue<task*> taskStore;
+    // メモリ再利用ロジックを無効化
+    // std::queue<block*> blockStore;
+    // std::queue<task*> taskStore;
 
     ll lastPlotTime = 0;
     ll plotInterval = (endRound / 100) * TARGET_BLOCK_TIME;
@@ -229,7 +212,7 @@ void simulation(int tie) {
 
     // CSVファイル用の出力ストリームを作成
     ofstream csvFile("plot_data.csv");
-    csvFile << "Time,Proportion" << endl;
+    csvFile << "BlockTime,Miner0Proportion,Difficulty" << endl;
 
     block* genesisBlock = new block;
     blockQue.push(genesisBlock);
@@ -245,7 +228,11 @@ void simulation(int tie) {
         task* nextBlockTask = new task;
         // 初期難易度を考慮したマイニング時間の計算
         double initialDifficulty = 1.0;
-        nextBlockTask->time = (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[i] * initialDifficulty);
+        double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[i];
+        double adjustedTime = baseTime * initialDifficulty;
+        
+        ll miningTime = (ll)(dist2(engine) * adjustedTime);
+        nextBlockTask->time = miningTime;
         nextBlockTask->flag = 0;
         nextBlockTask->minter = i;
         taskQue.push(nextBlockTask);
@@ -257,120 +244,86 @@ void simulation(int tie) {
         taskQue.pop();
         currentTime = currentTask->time;
 
-        if (currentTime > lastPlotTime + plotInterval) {
-            lastPlotTime = currentTime;
-
-            block* mainChainTip = nullptr;
-            for (int i = 0; i < N; i++) {
-                if (currentBlock[i] != nullptr) {
-                    if (mainChainTip == nullptr || currentBlock[i]->height > mainChainTip->height) {
-                        mainChainTip = currentBlock[i];
-                    }
-                }
-            }
-
-            if (mainChainTip != nullptr && mainChainTip->height > 0) {
-                ll highHashrateBlocks = 0;
-                ll totalBlocksInChain = mainChainTip->height;
-
-                block* current = mainChainTip;
-                while (current != nullptr && current->height > 0) {
-                    if (current->minter == highestHashrateNode) {
-                        highHashrateBlocks++;
-                    }
-                    current = current->prevBlock;
-                }
-
-                double proportion = (double)highHashrateBlocks / totalBlocksInChain;
-                // 標準出力には詳細情報を出力（デバッグ用）
-                cout << "Time: " << currentTime << ", HighHashrateBlocks: " << highHashrateBlocks 
-                     << ", TotalBlocks: " << totalBlocksInChain << ", Proportion: " << fixed << setprecision(5) << proportion << endl;
-                // CSVファイルには時間と割合のみを出力
-                csvFile << currentTime << "," << fixed << setprecision(5) << proportion << endl;
-            }
-        }
+        
 
         if (currentTask->flag == 0) { //block generation
             int minter = currentTask->minter;
-            if (minter == 0) {
-                cout << "--- MONITOR(minter 0): Processing a generation task scheduled for time " << currentTask->time << ". Is it valid? " << (currentMiningTask[minter] == currentTask ? "Yes" : "No") << endl;
-            }
             if (currentMiningTask[minter] != currentTask) {
-                // DEBUG: Log why a mining task is skipped
-                cout << "--- DEBUG: Skipping obsolete mining task for minter " << minter 
-                     << ". Task time: " << currentTask->time 
-                     << ". Current valid task pointer: " << currentMiningTask[minter] 
-                     << ". This task pointer: " << currentTask << endl;
                 continue;
             }
-            block* newBlock;
-            if (blockStore.size() > 0) {
-                newBlock = blockStore.front();blockStore.pop();
-            } else {
-                newBlock = new block;
-            }
-            newBlock->prevBlock = currentBlock[minter];
-            newBlock->height = currentBlock[minter]->height + 1;
+            
+            block* newBlock = new block;
+            
+            block* parent = currentBlock[minter];
+            newBlock->prevBlock = parent;
+            newBlock->height = parent->height + 1;
             newBlock->minter = minter;
             newBlock->time = currentTime;
             newBlock->rand = dist1(engine) * (LLONG_MAX - 10);
-            
-            // このノードのローカルな難易度を計算
-            double localDifficulty = calculateDifficulty(currentBlock[minter], minter);
-            newBlock->difficulty = localDifficulty;
-            
-            // lastEpochTimeの設定
-            if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 0 && newBlock->height > 0) {
-                // 難易度調整タイミングの場合、前回の調整時刻を設定
-                newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
-            } else {
-                // 通常のブロックの場合、親ブロックのlastEpochTimeを継承
-                if (newBlock->height == DIFFICULTY_ADJUSTMENT_INTERVAL) {
-                    // 初回の難易度調整の場合
-                    newBlock->lastEpochTime = 0; // ジェネシスブロック時刻
-                } else if (newBlock->height > DIFFICULTY_ADJUSTMENT_INTERVAL && 
-                          (currentBlock[minter]->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 0)) {
-                    // 親が調整ブロックだった場合、その時刻を記録
-                    newBlock->lastEpochTime = currentBlock[minter]->time;
-                } else {
-                    // 通常の場合、親のlastEpochTimeを継承
-                    newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
-                }
+
+            // 親ブロックに基づいて次の難易度を計算
+            newBlock->difficulty = calculateDifficulty(parent, minter);
+            cout << "newBlock->difficulty: " << newBlock->difficulty << endl;
+
+            // lastEpochTimeの更新
+            newBlock->lastEpochTime = parent->lastEpochTime;
+            if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 1) {
+                // 調整ブロックの場合、次の期間の開始時刻として現在の時刻を記録
+                newBlock->lastEpochTime = currentBlock[minter]->time;
             }
             
             currentBlock[minter] = newBlock;
 
-            blockQue.push(newBlock);
-            if (blockQue.size() > 10000) { // dont need to record 10000 blocks ago
-                block* deleteBlock = blockQue.front();blockQue.pop();
-                blockStore.push(deleteBlock);
-            }
+            // --- プロットロジックここから ---
+            if (minter == highestHashrateNode) {
+                // ネットワーク全体の最も長いチェーンを見つける
+                block* mainChainTip = nullptr;
+                for (int i = 0; i < N; i++) {
+                    if (currentBlock[i] != nullptr) {
+                        if (mainChainTip == nullptr || currentBlock[i]->height > mainChainTip->height) {
+                            mainChainTip = currentBlock[i];
+                        }
+                    }
+                }
 
-            task* nextBlockTask;
-            if (taskStore.size() > 0) {
-                nextBlockTask = taskStore.front();taskStore.pop();
-            } else {
-                nextBlockTask = new task;
+                if (mainChainTip != nullptr && mainChainTip->height > 0) {
+                    ll highHashrateBlocks = 0;
+                    ll totalBlocksInChain = mainChainTip->height;
+                    block* current = mainChainTip;
+                    while (current != nullptr && current->height > 0) {
+                        if (current->minter == highestHashrateNode) {
+                            highHashrateBlocks++;
+                        }
+                        current = current->prevBlock;
+                    }
+                    double proportion = (double)highHashrateBlocks / totalBlocksInChain;
+                    csvFile << newBlock->height << "," << newBlock->time << "," << fixed << setprecision(5) << proportion << "," << newBlock->difficulty << endl;
+                }
             }
+            // --- プロットロジックここまで ---
+
+            blockQue.push(newBlock);
+            // メモリ再利用ロジックは無効化
+
+            task* nextBlockTask = new task;
+            
             // 次のマイニング時間を計算（現在のノードの難易度に基づく）
             double nextDifficulty = calculateDifficulty(newBlock, minter);
-            nextBlockTask->time = currentTime + (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[minter] * nextDifficulty);
+            // マイニング時間の計算を安全に行い、オーバーフローを防ぐ
+            double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[minter];
+            double adjustedTime = baseTime * nextDifficulty;
+            
+            double randomFactor = dist2(engine);
+            ll miningTime = (ll)(randomFactor * adjustedTime);
+            nextBlockTask->time = currentTime + miningTime;
+            
             nextBlockTask->flag = 0;
             nextBlockTask->minter = minter;
             taskQue.push(nextBlockTask);
             currentMiningTask[minter] = nextBlockTask;
 
-            if (minter == 0) {
-                cout << "--- MONITOR(minter 0): Generated a new block. Next mining task is scheduled for time " << nextBlockTask->time << endl;
-            }
-
             for (int i = 0;i < N;i++) { // propagation task
-                task* nextPropTask;
-                if (taskStore.size() > 0) {
-                    nextPropTask = taskStore.front();taskStore.pop();
-                } else {
-                    nextPropTask = new task;
-                }
+                task* nextPropTask = new task;
                 nextPropTask->time = currentTime + prop(minter, i);
                 nextPropTask->flag = 1;
                 nextPropTask->to = i;
@@ -381,63 +334,43 @@ void simulation(int tie) {
 
             if(currentRound < newBlock->height) {
                 currentRound = newBlock->height;
-            } else { // fork
-                
+                // cout << "blockgeneration, miner: " << minter << ", height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
             }
-            cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
+
         } else { // propagation
-            cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
             int to = currentTask->to;
             int from = currentTask->from;
             bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
             
-            // メインチェーンが変更された場合、新しい難易度に基づいてマイニングを再開
             if (mainchainChanged) {
-                if (to == 0) {
-                    cout << "--- MONITOR(minter 0): Mainchain changed. Restarting mining." << endl;
-                }
-                // 現在のマイニングタスクは、新しいタスクを割り当てることで無効化される
+                // 新しいメインチェーンの先端ブロックに基づいて、次のマイニングの難易度を計算
+                double latestDifficulty = calculateDifficulty(currentBlock[to], to);
                 
-                // 新しいメインチェーンの最新ブロックに記録されている難易度を使用
-                double newDifficulty = currentBlock[to]->difficulty;
+                task* newMiningTask = new task;
                 
-                // 新しいマイニングタスクを作成
-                task* newMiningTask;
-                if (taskStore.size() > 0) {
-                    newMiningTask = taskStore.front();
-                    taskStore.pop();
-                } else {
-                    newMiningTask = new task;
-                }
+                double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[to];
+                double adjustedTime = baseTime * latestDifficulty;
                 
-                // 新しい難易度でマイニング時間を計算
-                newMiningTask->time = currentTime + (ll) (dist2(engine) * generationTime * totalHashrate / hashrate[to] * newDifficulty);
+                double randomFactor = dist2(engine);
+                ll miningTime = (ll)(randomFactor * adjustedTime);
+                newMiningTask->time = currentTime + miningTime;
                 newMiningTask->flag = 0;
                 newMiningTask->minter = to;
                 taskQue.push(newMiningTask);
                 currentMiningTask[to] = newMiningTask;
-                
-                cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
             }
         }
-
-        taskStore.push(currentTask);
+        // メモリリークするが、安全のためオブジェクトは解放しない
+        // delete currentTask;
     }
 
-    // DEBUG: Check if the task queue is empty and log the state of mining tasks
     if (taskQue.empty()) {
-        cout << "--- DEBUG: Task queue is empty. Simulation stopped. ---" << endl;
-        cout << "Current round: " << currentRound << ", End round: " << endRound << endl;
-        for (int i = 0; i < N; ++i) {
-            cout << "Node " << i << ": currentMiningTask pointer is " << currentMiningTask[i] << endl;
-            if (currentMiningTask[i] != nullptr) {
-                cout << "  -> Task details: time=" << currentMiningTask[i]->time 
-                     << ", flag=" << currentMiningTask[i]->flag 
-                     << ", minter=" << currentMiningTask[i]->minter << endl;
-            }
-        }
+        cout << "--- Simulation stopped: Task queue is empty. ---" << endl;
+    } else {
+        cout << "--- Simulation finished normally. ---" << endl;
     }
+    cout << "Final block height: " << currentRound << endl;
+    cout << "Current time: " << currentTime << " ms" << endl;
     
-    // CSVファイルをクローズ
     csvFile.close();
 }
