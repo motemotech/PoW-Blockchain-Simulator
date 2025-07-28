@@ -40,14 +40,14 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 600000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 900000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
 ll hashrate[MAX_N];
 ll totalHashrate;
 ll numMain[3][MAX_N];
-ll endRound = 1000000;
+ll endRound = 100000;
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
