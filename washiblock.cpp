@@ -370,9 +370,9 @@ void simulation(int tie) {
             } else { // fork
                 
             }
-            // cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
+            cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
         } else { // propagation
-            // cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
+            cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
             int to = currentTask->to;
             int from = currentTask->from;
             bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
@@ -401,7 +401,7 @@ void simulation(int tie) {
                 taskQue.push(newMiningTask);
                 currentMiningTask[to] = newMiningTask;
                 
-                // cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
+                cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
             }
         }
 
