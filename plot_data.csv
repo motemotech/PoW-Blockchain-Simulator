@@ -1,109 +1,10 @@
-akira
-hashrate0: 9
-hashrate1: 1
-hashrate2: 1
-hashrate3: 1
-hashrate4: 1
-hashrate5: 1
-hashrate6: 1
-hashrate7: 1
-hashrate8: 1
-hashrate9: 1
 Time,Proportion
 600006365,0.48315
 1200036525,0.48338
-=== Difficulty Adjustment (Node 7) ===
-Block height: 2016
-Last epoch time: 0 ms
-Current time: 1233105655 ms
-Actual timespan: 1233105655 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.01943
-Current difficulty: 1.00000
-Proportional adjustment
-New difficulty: 0.98094
-=================================================
-=== Difficulty Adjustment (Node 0) ===
-Block height: 2016
-Last epoch time: 0 ms
-Current time: 1233105655 ms
-Actual timespan: 1233105655 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.01943
-Current difficulty: 1.00000
-Proportional adjustment
-New difficulty: 0.98094
-=================================================
 1800152250,0.49146
 2400173856,0.49288
-=== Difficulty Adjustment (Node 6) ===
-Block height: 4032
-Last epoch time: 1233105655 ms
-Current time: 2411802195 ms
-Actual timespan: 1178696540 ms
-Target timespan: 1209600000 ms
-Ratio (T): 0.97445
-Current difficulty: 0.98094
-Proportional adjustment
-New difficulty: 1.00666
-=================================================
-=== Difficulty Adjustment (Node 9) ===
-Block height: 4032
-Last epoch time: 1233105655 ms
-Current time: 2411802195 ms
-Actual timespan: 1178696540 ms
-Target timespan: 1209600000 ms
-Ratio (T): 0.97445
-Current difficulty: 0.98094
-Proportional adjustment
-New difficulty: 1.00666
-=================================================
 3000195335,0.49592
 3600196359,0.49534
-=== Difficulty Adjustment (Node 8) ===
-Block height: 6048
-Last epoch time: 2411802195 ms
-Current time: 3622760788 ms
-Actual timespan: 1210958593 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.00112
-Current difficulty: 1.00666
-Proportional adjustment
-New difficulty: 1.00553
-=================================================
-=== Difficulty Adjustment (Node 0) ===
-Block height: 6048
-Last epoch time: 2411802195 ms
-Current time: 3622760788 ms
-Actual timespan: 1210958593 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.00112
-Current difficulty: 1.00666
-Proportional adjustment
-New difficulty: 1.00553
-=================================================
 4200240294,0.49164
 4800265629,0.49108
-=== Difficulty Adjustment (Node 0) ===
-Block height: 8064
-Last epoch time: 3622760788 ms
-Current time: 4877143571 ms
-Actual timespan: 1254382783 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.03702
-Current difficulty: 1.00553
-Proportional adjustment
-New difficulty: 0.96963
-=================================================
-=== Difficulty Adjustment (Node 0) ===
-Block height: 8064
-Last epoch time: 3622760788 ms
-Current time: 4877143571 ms
-Actual timespan: 1254382783 ms
-Target timespan: 1209600000 ms
-Ratio (T): 1.03702
-Current difficulty: 1.00553
-Proportional adjustment
-New difficulty: 0.96963
-=================================================
 5400311249,0.49255

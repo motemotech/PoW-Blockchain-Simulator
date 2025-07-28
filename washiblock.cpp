@@ -227,7 +227,9 @@ void simulation(int tie) {
     ll plotInterval = (endRound / 100) * TARGET_BLOCK_TIME;
     if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
 
-    cout << "Time,Proportion" << endl;
+    // CSVファイル用の出力ストリームを作成
+    ofstream csvFile("plot_data.csv");
+    csvFile << "Time,Proportion" << endl;
 
     block* genesisBlock = new block;
     blockQue.push(genesisBlock);
@@ -280,7 +282,11 @@ void simulation(int tie) {
                 }
 
                 double proportion = (double)highHashrateBlocks / totalBlocksInChain;
-                cout << currentTime << "," << fixed << setprecision(5) << proportion << endl;
+                // 標準出力には詳細情報を出力（デバッグ用）
+                cout << "Time: " << currentTime << ", HighHashrateBlocks: " << highHashrateBlocks 
+                     << ", TotalBlocks: " << totalBlocksInChain << ", Proportion: " << fixed << setprecision(5) << proportion << endl;
+                // CSVファイルには時間と割合のみを出力
+                csvFile << currentTime << "," << fixed << setprecision(5) << proportion << endl;
             }
         }
 
@@ -364,9 +370,9 @@ void simulation(int tie) {
             } else { // fork
                 
             }
-            cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
+            // cout << "blockgeneration, current time: "  << currentTime << ", minter"<< newBlock->minter << ", block height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
         } else { // propagation
-            cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
+            // cout << "block propagation, current time: " << currentTime << ", from: " << currentTask->from << ", to: " << currentTask->to << ", height: " << currentTask->propagatedBlock->height << endl;
             int to = currentTask->to;
             int from = currentTask->from;
             bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
@@ -395,10 +401,13 @@ void simulation(int tie) {
                 taskQue.push(newMiningTask);
                 currentMiningTask[to] = newMiningTask;
                 
-                cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
+                // cout << "Mainchain changed for node " << to << ", restarting mining with difficulty: " << newDifficulty << endl;
             }
         }
 
         taskStore.push(currentTask);
     }
+    
+    // CSVファイルをクローズ
+    csvFile.close();
 }
