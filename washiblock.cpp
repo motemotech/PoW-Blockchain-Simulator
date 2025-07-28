@@ -5,6 +5,7 @@
 #include <cmath>
 #include <iomanip>
 #include <climits>
+#include <array>
 using namespace std;
 
 
@@ -16,6 +17,7 @@ using namespace std;
 using namespace std;
 typedef unsigned long long ull;
 typedef long long ll;
+const std::array<ll, 10> HASH_RATE_ARRAY = {9, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct block {
     ll height;
@@ -38,7 +40,7 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 6000; // 6000, 60000, 300000
+ll delay = 6000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
@@ -49,6 +51,7 @@ ll endRound = 100000;
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
+int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void mainChain(block* block1, int tie);
@@ -215,10 +218,16 @@ void simulation(int tie) {
       decltype(compare) // 比較関数オブジェクトを指定
     > taskQue {compare};
     
-    std:queue<block*> blockQue;
+    std::queue<block*> blockQue;
 
     std::queue<block*> blockStore;
     std::queue<task*> taskStore;
+
+    ll lastPlotTime = 0;
+    ll plotInterval = (endRound / 100) * TARGET_BLOCK_TIME;
+    if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
+
+    cout << "Time,Proportion" << endl;
 
     block* genesisBlock = new block;
     blockQue.push(genesisBlock);
@@ -245,6 +254,36 @@ void simulation(int tie) {
         task* currentTask = taskQue.top();
         taskQue.pop();
         currentTime = currentTask->time;
+
+        if (currentTime > lastPlotTime + plotInterval) {
+            lastPlotTime = currentTime;
+
+            block* mainChainTip = nullptr;
+            for (int i = 0; i < N; i++) {
+                if (currentBlock[i] != nullptr) {
+                    if (mainChainTip == nullptr || currentBlock[i]->height > mainChainTip->height) {
+                        mainChainTip = currentBlock[i];
+                    }
+                }
+            }
+
+            if (mainChainTip != nullptr && mainChainTip->height > 0) {
+                ll highHashrateBlocks = 0;
+                ll totalBlocksInChain = mainChainTip->height;
+
+                block* current = mainChainTip;
+                while (current != nullptr && current->height > 0) {
+                    if (current->minter == highestHashrateNode) {
+                        highHashrateBlocks++;
+                    }
+                    current = current->prevBlock;
+                }
+
+                double proportion = (double)highHashrateBlocks / totalBlocksInChain;
+                cout << currentTime << "," << fixed << setprecision(5) << proportion << endl;
+            }
+        }
+
         if (currentTask->flag == 0) { //block generation
             int minter = currentTask->minter;
             if (currentMiningTask[minter] != currentTask) continue;
