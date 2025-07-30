@@ -41,7 +41,7 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 1050000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 2100000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
