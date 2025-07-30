@@ -69,28 +69,51 @@ std::exponential_distribution<double> dist2(1);
 std::normal_distribution<double> dist3(0.0, 1.0);
 
 int main(void) {
-    const std::array<ll, 12> delay_values = {
-        1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
-        2100000, 2250000, 2400000, 2550000, 2700000, 2850000
-    };
-
-    for (ll current_delay : delay_values) {
-        hashrate[0] = N - 1;
-        for (int i = 1; i < N; i++) {
-            hashrate[i] = 1;
-        }
-
-        totalHashrate = 0;
-        for (int i = 0; i < N; i++) {
-            totalHashrate += hashrate[i];
-        }
-        delay = current_delay;
-        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
-        reset();
-        simulation(0);
+    cout << "akira" << endl;
+    // const std::array<ll, 12> delay_values = {
+    //     1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
+    //     2100000, 2250000, 2400000, 2550000, 2700000, 2850000
+    // };
+ 
+    hashrate[0] = N - 1;
+    for (int i = 1;i < N;i++) {
+        hashrate[i] = 1;
     }
 
-    cout << "--- All simulations finished. ---" << endl;
+
+    for (int i = 0;i < N;i++) {
+        totalHashrate += hashrate[i];
+        cout << "hashrate" << i << ": " << hashrate[i] << endl;
+    }
+
+    for (int i = 0;i < N;i++) {
+        for (int j = 0;j < N;j++) {
+            prop(i, j);
+        }
+    }
+
+    simulation(0);
+
+    cout << "block propagation time: " << delay << endl;
+
+    // for (ll current_delay : delay_values) {
+    //     hashrate[0] = N - 1;
+    //     for (int i = 1; i < N; i++) {
+    //         hashrate[i] = 1;
+    //     }
+
+    //     totalHashrate = 0;
+    //     for (int i = 0; i < N; i++) {
+    //         totalHashrate += hashrate[i];
+    //     }
+    //     delay = current_delay;
+    //     cout << "--- Running simulation with delay: " << delay << " ---" << endl;
+    //     reset();
+    //     simulation(0);
+    // }
+
+    // cout << "--- All simulations finished. ---" << endl;
+
     return 0;
 }
 
@@ -154,6 +177,8 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
     if (ratio < 0.25) ratio = 0.25;
 
     double newDifficulty = latestBlock->difficulty * ratio;
+
+    newDifficulty = 1.0;
     
     return newDifficulty;
 }

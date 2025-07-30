@@ -45,7 +45,7 @@ for i, data in enumerate(file_data_sorted):
 
         # データをプロット
         plt.plot(df['block_number'], df['ratio'], marker='o', linestyle='-',
-                 linewidth=1.0, markersize=2, color=colors[i], label=label)
+                 linewidth=0.25, markersize=0.5, color=colors[i], label=label)
 
     except FileNotFoundError:
         print(f"File not found: {file_path}")
