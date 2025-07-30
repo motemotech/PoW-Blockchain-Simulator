@@ -46,7 +46,7 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 1050000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 60000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
@@ -76,10 +76,10 @@ std::normal_distribution<double> dist3(0.0, 1.0);
 int main(void) {
     cout << "akira" << endl;
     const std::array<ll, 24> delay_values = {
-        300000, 600000, 750000, 900000, 1050000, 1200000, 1350000, 
-        1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
-        2100000, 2250000, 2400000, 2550000, 2700000, 2850000,
-        3000000, 4500000, 6000000
+        300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
+        9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
+        1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
+       2700000, 2850000, 3000000, 4500000, 6000000
     };
 
     // hashrate[0] = N - 1;
@@ -91,12 +91,12 @@ int main(void) {
     // for (int i = 0;i < N;i++) {
     //     totalHashrate += hashrate[i];
     //     cout << "hashrate" << i << ": " << hashrate[i] << endl;
-    // }
+    //  }
 
     // for (int i = 0;i < N;i++) {
-    //     for (int j = 0;j < N;j++) {
-    //         prop(i, j);
-    //     }
+    //      for (int j = 0;j < N;j++) {
+    //          prop(i, j);
+    //      }
     // }
 
     // simulation(0);
@@ -104,19 +104,19 @@ int main(void) {
     // cout << "block propagation time: " << delay << endl;
 
     for (ll current_delay : delay_values) {
-        hashrate[0] = N - 1;
-        for (int i = 1; i < N; i++) {
-            hashrate[i] = 1;
-        }
+      hashrate[0] = N - 1;
+       for (int i = 1; i < N; i++) {
+           hashrate[i] = 1;
+       }
 
-        totalHashrate = 0;
-        for (int i = 0; i < N; i++) {
-            totalHashrate += hashrate[i];
-        }
-        delay = current_delay;
-        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
-        reset();
-        simulation(0);
+       totalHashrate = 0;
+       for (int i = 0; i < N; i++) {
+           totalHashrate += hashrate[i];
+       }
+       delay = current_delay;
+       cout << "--- Running simulation with delay: " << delay << " ---" << endl;
+       reset();
+       simulation(0);
     }
 
     cout << "--- All simulations finished. ---" << endl;
@@ -246,7 +246,7 @@ void simulation(int tie) {
 
     // CSVファイル用の出力ストリームを作成
     std::string filename_suffix;
-    if (DYNAMIC_DIFFICULTY_ENABLED) {
+    if (!DYNAMIC_DIFFICULTY_ENABLED) {
         // 動的難易度調整が有効な場合（newDifficulty = 1.0 がコメントアウトされている状態に相当）
         filename_suffix = "_static_plot.csv";
     } else {
