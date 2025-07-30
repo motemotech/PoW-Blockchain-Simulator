@@ -16,6 +16,11 @@ using namespace std;
 #define TARGET_BLOCK_TIME 600000            // 10分（ミリ秒）
 #define TARGET_TIMESPAN (DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME) // 2週間相当
 using namespace std;
+
+// trueにすると動的難易度調整が有効になり、falseにすると難易度が1.0に固定されます。
+// これに応じて、出力されるファイル名も変わります。
+const bool DYNAMIC_DIFFICULTY_ENABLED = true;
+
 typedef unsigned long long ull;
 typedef long long ll;
 const std::array<ll, 10> HASH_RATE_ARRAY = {9, 1, 1, 1, 1, 1, 1, 1, 1, 1};
@@ -70,49 +75,51 @@ std::normal_distribution<double> dist3(0.0, 1.0);
 
 int main(void) {
     cout << "akira" << endl;
-    // const std::array<ll, 12> delay_values = {
-    //     1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
-    //     2100000, 2250000, 2400000, 2550000, 2700000, 2850000
-    // };
- 
-    hashrate[0] = N - 1;
-    for (int i = 1;i < N;i++) {
-        hashrate[i] = 1;
-    }
+    const std::array<ll, 24> delay_values = {
+        300000, 600000, 750000, 900000, 1050000, 1200000, 1350000, 
+        1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
+        2100000, 2250000, 2400000, 2550000, 2700000, 2850000,
+        3000000, 4500000, 6000000
+    };
 
-
-    for (int i = 0;i < N;i++) {
-        totalHashrate += hashrate[i];
-        cout << "hashrate" << i << ": " << hashrate[i] << endl;
-    }
-
-    for (int i = 0;i < N;i++) {
-        for (int j = 0;j < N;j++) {
-            prop(i, j);
-        }
-    }
-
-    simulation(0);
-
-    cout << "block propagation time: " << delay << endl;
-
-    // for (ll current_delay : delay_values) {
-    //     hashrate[0] = N - 1;
-    //     for (int i = 1; i < N; i++) {
-    //         hashrate[i] = 1;
-    //     }
-
-    //     totalHashrate = 0;
-    //     for (int i = 0; i < N; i++) {
-    //         totalHashrate += hashrate[i];
-    //     }
-    //     delay = current_delay;
-    //     cout << "--- Running simulation with delay: " << delay << " ---" << endl;
-    //     reset();
-    //     simulation(0);
+    // hashrate[0] = N - 1;
+    // for (int i = 1;i < N;i++) {
+    //     hashrate[i] = 1;
     // }
 
-    // cout << "--- All simulations finished. ---" << endl;
+
+    // for (int i = 0;i < N;i++) {
+    //     totalHashrate += hashrate[i];
+    //     cout << "hashrate" << i << ": " << hashrate[i] << endl;
+    // }
+
+    // for (int i = 0;i < N;i++) {
+    //     for (int j = 0;j < N;j++) {
+    //         prop(i, j);
+    //     }
+    // }
+
+    // simulation(0);
+
+    // cout << "block propagation time: " << delay << endl;
+
+    for (ll current_delay : delay_values) {
+        hashrate[0] = N - 1;
+        for (int i = 1; i < N; i++) {
+            hashrate[i] = 1;
+        }
+
+        totalHashrate = 0;
+        for (int i = 0; i < N; i++) {
+            totalHashrate += hashrate[i];
+        }
+        delay = current_delay;
+        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
+        reset();
+        simulation(0);
+    }
+
+    cout << "--- All simulations finished. ---" << endl;
 
     return 0;
 }
@@ -176,9 +183,12 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
     if (ratio > 4.0) ratio = 4.0;
     if (ratio < 0.25) ratio = 0.25;
 
-    double newDifficulty = latestBlock->difficulty * ratio;
-
-    // newDifficulty = 1.0;
+    double newDifficulty;
+    if (DYNAMIC_DIFFICULTY_ENABLED) {
+        newDifficulty = latestBlock->difficulty * ratio;
+    } else {
+        newDifficulty = 1.0;
+    }
     
     return newDifficulty;
 }
@@ -235,7 +245,15 @@ void simulation(int tie) {
     if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
 
     // CSVファイル用の出力ストリームを作成
-    std::string filename = std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + "_plot.csv";
+    std::string filename_suffix;
+    if (DYNAMIC_DIFFICULTY_ENABLED) {
+        // 動的難易度調整が有効な場合（newDifficulty = 1.0 がコメントアウトされている状態に相当）
+        filename_suffix = "_static_plot.csv";
+    } else {
+        // 静的難易度の場合
+        filename_suffix = "_plot.csv";
+    }
+    std::string filename = std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + filename_suffix;
     ofstream csvFile(filename);
     
 

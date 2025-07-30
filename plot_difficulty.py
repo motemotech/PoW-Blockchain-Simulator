@@ -4,8 +4,8 @@ import matplotlib.pyplot as plt
 import os
 
 # --- 設定 ---
-CSV_FILE = '900000_600000_100000_plot.csv'
-OUTPUT_FILENAME = 'difficulty_vs_share_chart.svg'
+CSV_FILE = '4500000_600000_100000_plot.csv'
+OUTPUT_FILENAME = 'difficulty_vs_share_chart_4500000.svg'
 # ------------
 
 # グラフのスタイルとフォントサイズを設定
