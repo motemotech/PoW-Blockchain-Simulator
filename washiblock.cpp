@@ -178,7 +178,7 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
 
     double newDifficulty = latestBlock->difficulty * ratio;
 
-    newDifficulty = 1.0;
+    // newDifficulty = 1.0;
     
     return newDifficulty;
 }
