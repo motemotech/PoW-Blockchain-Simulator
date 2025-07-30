@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <climits>
 #include <array>
+#include <string>
 using namespace std;
 
 
@@ -40,7 +41,7 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 4500000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 1050000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
@@ -68,30 +69,28 @@ std::exponential_distribution<double> dist2(1);
 std::normal_distribution<double> dist3(0.0, 1.0);
 
 int main(void) {
-    cout << "akira" << endl;
- 
-    hashrate[0] = N - 1;
-    for (int i = 1;i < N;i++) {
-        hashrate[i] = 1;
-    }
+    const std::array<ll, 12> delay_values = {
+        1200000, 1350000, 1500000, 1650000, 1800000, 1950000, 
+        2100000, 2250000, 2400000, 2550000, 2700000, 2850000
+    };
 
-
-    for (int i = 0;i < N;i++) {
-        totalHashrate += hashrate[i];
-        cout << "hashrate" << i << ": " << hashrate[i] << endl;
-    }
-
-    for (int i = 0;i < N;i++) {
-        for (int j = 0;j < N;j++) {
-            prop(i, j);
+    for (ll current_delay : delay_values) {
+        hashrate[0] = N - 1;
+        for (int i = 1; i < N; i++) {
+            hashrate[i] = 1;
         }
+
+        totalHashrate = 0;
+        for (int i = 0; i < N; i++) {
+            totalHashrate += hashrate[i];
+        }
+        delay = current_delay;
+        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
+        reset();
+        simulation(0);
     }
 
-    simulation(0);
-
-    cout << "block propagation time: " << delay << endl;
-
-
+    cout << "--- All simulations finished. ---" << endl;
     return 0;
 }
 
@@ -211,8 +210,9 @@ void simulation(int tie) {
     if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
 
     // CSVファイル用の出力ストリームを作成
-    ofstream csvFile("plot_data.csv");
-    csvFile << "BlockTime,Miner0Proportion,Difficulty" << endl;
+    std::string filename = std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + "_plot.csv";
+    ofstream csvFile(filename);
+    
 
     block* genesisBlock = new block;
     blockQue.push(genesisBlock);
