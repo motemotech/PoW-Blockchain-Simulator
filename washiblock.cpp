@@ -41,7 +41,7 @@ struct task {
 
 ll currentRound;
 ll currentTime = 0;
-ll delay = 2100000; // 6000, 60000, 300000 ブロックの伝搬遅延
+ll delay = 4500000; // 6000, 60000, 300000 ブロックの伝搬遅延
 ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
@@ -178,7 +178,7 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
 
     double newDifficulty = latestBlock->difficulty * ratio;
 
-    // newDifficulty = 1.0;
+    newDifficulty = 1.0;
     
     return newDifficulty;
 }
