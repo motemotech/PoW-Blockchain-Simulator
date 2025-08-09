@@ -25,7 +25,7 @@ const bool DYNAMIC_DIFFICULTY_ENABLED = true;
 
 typedef unsigned long long ull;
 typedef long long ll;
-const std::array<ll, 10> HASH_RATE_ARRAY = {9, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct block {
     ll height;
@@ -55,10 +55,10 @@ task* currentMiningTask[MAX_N];
 ll hashrate[MAX_N];
 ll totalHashrate;
 ll numMain[3][MAX_N];
-ll endRound = 1000;
+ll endRound = 1000000;
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
-int N = 10;// num of node
+int N = 20;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
@@ -156,32 +156,25 @@ ll prop(int i, int j) {
     else return delay;
 }
 
-// ノード固有の難易度計算関数の実装
 double calculateDifficulty(block* latestBlock, int nodeId) {
     if (latestBlock == nullptr || latestBlock->height == 0) {
-        return 1.0; // ジェネシスブロックまたはnullptrの場合は初期難易度
+        return 1.0;
     }
-    
-    // 2016ブロックごとに調整をチェック
     
     if (latestBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL != 0) {
-        return latestBlock->difficulty; // 調整タイミングでない場合は現在の難易度を維持
+        return latestBlock->difficulty;
     }
     
-    // 初回調整の場合（height < 2016の場合）
     if (latestBlock->height < DIFFICULTY_ADJUSTMENT_INTERVAL) {
-        return latestBlock->difficulty; // 十分なブロック履歴がない場合は現在の難易度を維持
+        return latestBlock->difficulty; 
     }
     
-    // lastEpochTimeを使用して効率的に前回調整時刻を取得
     cout << "latestBlock->time: " << latestBlock->time << endl;
     cout << "latestBlock->lastEpochTime: " << latestBlock->lastEpochTime << endl;
     ll actualTimespan = latestBlock->time - latestBlock->lastEpochTime;
     cout << "actualTimespan: " << actualTimespan << endl;
-    // 2016ブロック分の目標時間と実際にかかった時間の比率を計算
     double ratio = (double)TARGET_TIMESPAN / (double)actualTimespan;
     cout << "ratio: " << ratio << endl;
-    // 難易度の急激な変動を防ぐため、調整率を制限 (0.25 ~ 4.0)
     if (ratio > 4.0) ratio = 4.0;
     if (ratio < 0.25) ratio = 0.25;
 
@@ -247,7 +240,7 @@ void simulation(int tie) {
     if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
 
     // CSVファイル用の出力ストリームを作成（出力先: ./data 配下）
-    const std::string output_dir = "data";
+    const std::string output_dir = "tmp_data";
     struct stat st;
     if (stat(output_dir.c_str(), &st) != 0) {
         // ディレクトリが存在しない場合は作成
@@ -263,6 +256,11 @@ void simulation(int tie) {
     }
     std::string filename = output_dir + "/" + std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + filename_suffix;
     ofstream csvFile(filename);
+    if (!csvFile.is_open()) {
+        cerr << "[error] Failed to open CSV file: " << filename << endl;
+    } else {
+        cout << "[info] Writing CSV to: " << filename << endl;
+    }
     
 
     block* genesisBlock = new block;
