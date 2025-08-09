@@ -60,6 +60,8 @@ ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 20;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
+// 各マイナーが currentRound を更新した回数を記録
+ll currentRoundUpdateCount[MAX_N];
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void mainChain(block* block1, int tie);
@@ -214,6 +216,7 @@ void reset() {
     mainLength = 0;
     for (int i = 0;i < N;i++) {
         currentBlock[i] = nullptr;
+        currentRoundUpdateCount[i] = 0; // リセット
     }
 
     return;
@@ -383,6 +386,10 @@ void simulation(int tie) {
 
             if(currentRound < newBlock->height) {
                 currentRound = newBlock->height;
+                // currentRound を更新したマイナーをカウント
+                if (minter >= 0 && minter < N) {
+                    currentRoundUpdateCount[minter]++;
+                }
                 // cout << "blockgeneration, miner: " << minter << ", height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << endl;
             }
 
@@ -420,6 +427,11 @@ void simulation(int tie) {
     }
     cout << "Final block height: " << currentRound << endl;
     cout << "Current time: " << currentTime << " ms" << endl;
+    // 各マイナーが currentRound を更新した回数を出力
+    cout << "CurrentRound update counts by miner:" << endl;
+    for (int i = 0; i < N; i++) {
+        cout << "  miner " << i << ": " << currentRoundUpdateCount[i] << endl;
+    }
     
     csvFile.close();
 }
