@@ -7,6 +7,8 @@
 #include <climits>
 #include <array>
 #include <string>
+#include <sys/stat.h>
+#include <sys/types.h>
 using namespace std;
 
 
@@ -53,7 +55,7 @@ task* currentMiningTask[MAX_N];
 ll hashrate[MAX_N];
 ll totalHashrate;
 ll numMain[3][MAX_N];
-ll endRound = 100000;
+ll endRound = 1000;
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 10;// num of node
@@ -244,7 +246,13 @@ void simulation(int tie) {
     ll plotInterval = (endRound / 100) * TARGET_BLOCK_TIME;
     if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
 
-    // CSVファイル用の出力ストリームを作成
+    // CSVファイル用の出力ストリームを作成（出力先: ./data 配下）
+    const std::string output_dir = "data";
+    struct stat st;
+    if (stat(output_dir.c_str(), &st) != 0) {
+        // ディレクトリが存在しない場合は作成
+        mkdir(output_dir.c_str(), 0777);
+    }
     std::string filename_suffix;
     if (!DYNAMIC_DIFFICULTY_ENABLED) {
         // 動的難易度調整が有効な場合（newDifficulty = 1.0 がコメントアウトされている状態に相当）
@@ -253,7 +261,7 @@ void simulation(int tie) {
         // 静的難易度の場合
         filename_suffix = "_plot.csv";
     }
-    std::string filename = std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + filename_suffix;
+    std::string filename = output_dir + "/" + std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(endRound) + filename_suffix;
     ofstream csvFile(filename);
     
 

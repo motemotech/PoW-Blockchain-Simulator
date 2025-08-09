@@ -1,5 +1,5 @@
 build:
-	g++ washiblock.cpp -o output
+	g++ src/washiblock.cpp -o output/washiblock
 
 run:
-	./output
+	./output/washiblock
