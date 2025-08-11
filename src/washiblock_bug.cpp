@@ -40,10 +40,6 @@ struct block {
     double difficulty;  // このブロック生成時の難易度
     ll lastEpochTime;   // 前回の難易度調整時刻（2016ブロック前）
     bool finalized = false;
-    
-    // コンストラクタを追加してメンバを初期化
-    block() : height(0), prevBlock(nullptr), minter(-1), roundStarter(-1), 
-              time(0), rand(0), difficulty(1.0), lastEpochTime(0), finalized(false) {}
 };
 
 struct task {
@@ -117,7 +113,7 @@ int main(void) {
     //    2700000, 2850000, 3000000, 4500000, 6000000
     // };
     const std::array<ll, 1> delay_values = {
-        300000
+        60000000
     };
 
     // hashrate[0] = N - 1;
@@ -362,6 +358,8 @@ void simulation(int tie) {
         task* currentTask = taskQue.top();
         taskQue.pop();
         currentTime = currentTask->time;
+        // cout << "currentTask" << currentTask->minter << endl;
+        // cout << "currentTime: " << currentTime << endl;
 
         if (currentTask->flag == 0) { //block generation
             int minter = currentTask->minter;
@@ -373,37 +371,29 @@ void simulation(int tie) {
             block* newBlock;
             if (blockStore.size() > 0) {
                 newBlock = blockStore.front();blockStore.pop();
-                // cout << "Reusing block from blockStore, address: " << newBlock << endl;
             } else {
                 newBlock = new block;
-                // cout << "Creating new block, address: " << newBlock << endl;
             }
             
-            // 再利用したブロックのメンバを適切に初期化
             newBlock->prevBlock = currentBlock[minter];
             newBlock->height = currentBlock[minter]->height + 1;
             newBlock->minter = minter;
             newBlock->time = currentTime;
             newBlock->rand = uni_dist(random_value) * (LLONG_MAX - 10);
-            newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
-            newBlock->difficulty = currentBlock[minter]->difficulty;  // 初期値として設定
-            newBlock->finalized = false;  // デフォルト値
-            newBlock->roundStarter = -1;  // 後で設定される
 
-            // cout << "Block created: miner=" << newBlock->minter << ", height=" << newBlock->height 
-            //      << ", lastEpochTime=" << newBlock->lastEpochTime << endl;
-            newBlock->difficulty = calculateDifficulty(currentBlock[minter], minter);
+            newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
+            // cout << "lastEpochTime: " << newBlock->lastEpochTime << endl;
             if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 1) {
                 newBlock->lastEpochTime = currentBlock[minter]->time;
+            } else if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 0) {
+                newBlock->difficulty = calculateDifficulty(currentBlock[minter], minter);
             }
             
             currentBlock[minter] = newBlock;
-            // cout << "Updated currentBlock[" << minter << "] to new block" << endl;
 
             blockQue.push(newBlock);
             if (blockQue.size() > 10000) {
                 block* deleteBlock = blockQue.front();blockQue.pop();
-                // cout << "Pushing block to blockStore, address: " << deleteBlock << ", height: " << deleteBlock->height << endl;
                 blockStore.push(deleteBlock);
             }
 
@@ -414,26 +404,18 @@ void simulation(int tie) {
                 nextBlockTask = new task;
             }
             
-            // double nextDifficulty = calculateDifficulty(newBlock, minter);
-            // cout << "newBlock->difficulty: " << newBlock->difficulty << endl;
-            // cout << "nextDifficulty: " << nextDifficulty << endl;
+            double nextDifficulty = calculateDifficulty(newBlock, minter);
             double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[minter];
-            // cout << "baseTime: " << baseTime << endl;
-            double adjustedTime = baseTime * newBlock->difficulty;
-            // cout << "adjustedTime: " << adjustedTime << endl;
+            double adjustedTime = baseTime * nextDifficulty;
             
             double randomFactor = exp_dist(random_value);
-            // cout << "randomFactor: " << randomFactor << endl;
             ll miningTime = (ll)(randomFactor * adjustedTime);
-            // cout << "miningTime: " << miningTime << endl;
-            // cout << "currentTime: " << currentTime << endl;
             nextBlockTask->time = currentTime + miningTime;
             
             nextBlockTask->flag = 0;
             nextBlockTask->minter = minter;
             taskQue.push(nextBlockTask);
             currentMiningTask[minter] = nextBlockTask;
-            // cout << "nextBlockTask->time: " << nextBlockTask->time << endl;
 
             for (int i = 0;i < N;i++) { // propagation task
                 task* nextPropTask;
@@ -448,7 +430,6 @@ void simulation(int tie) {
                 nextPropTask->from = minter;
                 nextPropTask->propagatedBlock = newBlock;
                 taskQue.push(nextPropTask);
-                // cout << "nextPropTask->time: " << nextPropTask->time << endl;
             }
 
             if(currentRound < newBlock->height) {
@@ -509,45 +490,32 @@ void simulation(int tie) {
     // 各マイナーが currentRound を更新した回数を出力
     cout << "CurrentRound update counts by miner:" << endl;
     for (int i = 0; i < N; i++) {
-        if (currentRoundUpdateCount[i] > 0) {
-            cout << "miner" << i << ":" << "win rate" << (double)roundWinCount[i] / (double)currentRoundUpdateCount[i] << endl;
-        } else {
-            cout << "miner" << i << ":" << "win rate" << 0 << endl;
-        }
-    }
-
-    cout << "highestHashrateNodeMinedBlocks" << endl;
-    ll minedCount = 0;
-    for (int i = 0; i < END_ROUND; i++) {
-        if (highestHashrateNodeMinedBlocks[i]) {
-            minedCount++;
-        }
-        csvFile << i << ": " << (double)minedCount / (double)i << endl;
+        cout << "  miner " << i << ": " << currentRoundUpdateCount[i] << endl;
     }
     
-    // csvFile << "RoundWinCount" << endl;
-    // csvFile << "MinerID,Count" << endl;
-    // for (int i = 0; i < N; i++) {
-    //     csvFile << i << "," << roundWinCount[i] << endl;
-    // }
-    // csvFile << endl;
+    csvFile << "RoundWinCount" << endl;
+    csvFile << "MinerID,Count" << endl;
+    for (int i = 0; i < N; i++) {
+        csvFile << i << "," << roundWinCount[i] << endl;
+    }
+    csvFile << endl;
     
-    // // 2. すべてのminterのcurrentRoundUpdateCount
-    // csvFile << "CurrentRoundUpdateCount" << endl;
-    // csvFile << "MinerID,Count" << endl;
-    // for (int i = 0; i < N; i++) {
-    //     csvFile << i << "," << currentRoundUpdateCount[i] << endl;
-    // }
-    // csvFile << endl;
+    // 2. すべてのminterのcurrentRoundUpdateCount
+    csvFile << "CurrentRoundUpdateCount" << endl;
+    csvFile << "MinerID,Count" << endl;
+    for (int i = 0; i < N; i++) {
+        csvFile << i << "," << currentRoundUpdateCount[i] << endl;
+    }
+    csvFile << endl;
     
-    // // 3. highestHashrateNodeMinedBlocksの配列
-    // csvFile << "HighestHashrateNodeMinedBlocks" << endl;
-    // csvFile << "BlockHeight,WasMinedByHighestHashrateNode" << endl;
-    // for (ll height = 1; height <= currentRound; height++) {
-    //     if (height < END_ROUND) {
-    //         csvFile << height << "," << (highestHashrateNodeMinedBlocks[height] ? "1" : "0") << endl;
-    //     }
-    // }
+    // 3. highestHashrateNodeMinedBlocksの配列
+    csvFile << "HighestHashrateNodeMinedBlocks" << endl;
+    csvFile << "BlockHeight,WasMinedByHighestHashrateNode" << endl;
+    for (ll height = 1; height <= currentRound; height++) {
+        if (height < END_ROUND) {
+            csvFile << height << "," << (highestHashrateNodeMinedBlocks[height] ? "1" : "0") << endl;
+        }
+    }
 
     csvFile.close();
 }
