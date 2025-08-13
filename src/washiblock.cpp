@@ -19,7 +19,7 @@ typedef long long ll;
 #define MAX_N 1000
 #define DIFFICULTY_ADJUSTMENT_INTERVAL 2016  // 2016ブロックごとに調整
 // #define TARGET_TIMESPAN (DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME) // 2週間相当
-const ll END_ROUND = 10000;
+const ll END_ROUND = 1000;
 const ll TARGET_BLOCK_TIME = 600000;
 const ll TARGET_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME;
 using namespace std;
@@ -73,7 +73,14 @@ int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 ll currentRoundUpdateCount[MAX_N];
 
 // 各マイナーのブロックが144ブロックファイナリティを達成した回数を記録
-ll roundWinCount[MAX_N];
+// ll roundWinCount[MAX_N];
+
+ll startedByA;
+ll startedByO;
+ll startedByAAndMinedByA;
+ll startedByOAndMinedByO;
+ll startedByAAndMinedByO;
+ll startedByOAndMinedByA;
 
 ll highestHashrateNodeMainChainCount = 0;
 
@@ -110,15 +117,33 @@ block* createGenesisBlock() {
 }
 int main(void) {
     cout << "akira" << endl;
-    // const std::array<ll, 24> delay_values = {
-    //     300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
-    //     9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
-    //     1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
-    //    2700000, 2850000, 3000000, 4500000, 6000000
-    // };
-    const std::array<ll, 1> delay_values = {
-        300000
+    const std::array<ll, 24> delay_values = {
+        300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
+        9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
+        1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
+       2700000, 2850000, 3000000, 4500000, 6000000
     };
+
+    // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
+    const std::string output_dir = "tmp_data";
+    struct stat st;
+    if (stat(output_dir.c_str(), &st) != 0) {
+        mkdir(output_dir.c_str(), 0777);
+    }
+    
+    std::string filename_suffix = DYNAMIC_DIFFICULTY_ENABLED ? "w_and_pi.csv" : "static_w_and_pi.csv";
+    std::string w_and_pi_filename = output_dir + "/" + std::to_string(END_ROUND) + filename_suffix;
+    ofstream w_and_pi_file(w_and_pi_filename);
+    
+    if (!w_and_pi_file.is_open()) {
+        cerr << "[error] Failed to open w_and_pi CSV file: " << w_and_pi_filename << endl;
+        return 1;
+    } else {
+        cout << "[info] Writing w_and_pi CSV to: " << w_and_pi_filename << endl;
+    }
+    
+    // CSVファイルのヘッダーを書き込み
+    w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
 
     // hashrate[0] = N - 1;
     // for (int i = 1;i < N;i++) {
@@ -150,9 +175,23 @@ int main(void) {
        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
        reset();
        simulation(0);
+       
+       // シミュレーション後にw_A, w_O, pi_A, pi_Oの値を計算してCSVに書き込み
+       double pi_A = (double)startedByA / (double)END_ROUND;
+       double pi_O = (double)startedByO / (double)END_ROUND;
+       double w_A = (startedByA > 0) ? (double)startedByAAndMinedByA / (double)startedByA : 0.0;
+       double w_O = (startedByO > 0) ? (double)startedByOAndMinedByA / (double)startedByO : 0.0;
+       
+       w_and_pi_file << delay << "," << pi_A << "," << pi_O << "," << w_A << "," << w_O << endl;
+       cout << "Recorded: delay=" << delay << ", pi_A=" << pi_A << ", pi_O=" << pi_O 
+            << ", w_A=" << w_A << ", w_O=" << w_O << endl;
     }
 
     cout << "--- All simulations finished. ---" << endl;
+
+    // w_and_pi CSVファイルをクローズ
+    w_and_pi_file.close();
+    cout << "[info] w_and_pi CSV file closed successfully." << endl;
 
     return 0;
 }
@@ -235,7 +274,19 @@ void finalizeBlocks(block* block1, int tie) {
             while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
                 finalizedBlock->finalized = true;
                 
-                roundWinCount[finalizedBlock->minter]++;
+                if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByA++;
+                } else if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByO++;
+                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                    startedByO++;
+                    startedByOAndMinedByA++;
+                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                    startedByO++;
+                    startedByOAndMinedByO++;
+                }
 
                 if (finalizedBlock -> minter == highestHashrateNode) {
                     highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
@@ -249,12 +300,39 @@ void finalizeBlocks(block* block1, int tie) {
         mainLength = max(mainLength, curBlock->height);
         return;
     } else {
+        cout << "finalizeBlocks" << endl;
         block* curBlock = block1;
-        while (curBlock->height > mainLength) {
-            numMain[tie][curBlock->minter]++;
-            curBlock = curBlock->prevBlock;
+        // while (curBlock->height > mainLength) {
+        //     numMain[tie][curBlock->minter]++;
+        //     curBlock = curBlock->prevBlock;
+        // }
+
+        if (curBlock != nullptr && curBlock->height > 0) {
+            block* finalizedBlock = curBlock;
+            while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
+                finalizedBlock->finalized = true;
+                
+                if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByA++;
+                } else if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByO++;
+                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                    startedByO++;
+                    startedByOAndMinedByA++;
+                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                    startedByO++;
+                    startedByOAndMinedByO++;
+                } 
+
+                if (finalizedBlock -> minter == highestHashrateNode) {
+                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
+                }
+                
+                finalizedBlock = finalizedBlock->prevBlock;
+            }
         }
-        // 144ブロックファイナリティをなしにして、上記のwhile文を実行する。
     }
 }
 
@@ -265,7 +343,12 @@ void reset() {
     for (int i = 0;i < N;i++) {
         currentBlock[i] = nullptr;
         currentRoundUpdateCount[i] = 0; // リセット
-        roundWinCount[i] = 0;     // 追加
+        startedByA = 0;
+        startedByO = 0;
+        startedByAAndMinedByA = 0;
+        startedByOAndMinedByO = 0;
+        startedByAAndMinedByO = 0;
+        startedByOAndMinedByA = 0;
     }
 
     for (int i = 0;i < END_ROUND; i++) {
@@ -452,6 +535,7 @@ void simulation(int tie) {
             }
 
             if(currentRound < newBlock->height) {
+                // cout << "currentRound: " << currentRound << ", newBlock->height: " << newBlock->height  << "roundStarter: " << minter << endl;
                 currentRound = newBlock->height;
                 // currentRound を更新したマイナーをカウント
                 // つまり、　Roundを開始したマイナーのこと
@@ -467,6 +551,11 @@ void simulation(int tie) {
             }
 
             newBlock->roundStarter = currentRoundStarter;
+
+            if (newBlock->height == 100000) {
+                cout << "finalizeBlocks" << endl;
+                finalizeBlocks(newBlock, tie);
+            }
 
         } else { // propagation
             int to = currentTask->to;
@@ -508,13 +597,26 @@ void simulation(int tie) {
     cout << "Current time: " << currentTime << " ms" << endl;
     // 各マイナーが currentRound を更新した回数を出力
     cout << "CurrentRound update counts by miner:" << endl;
-    for (int i = 0; i < N; i++) {
-        if (currentRoundUpdateCount[i] > 0) {
-            cout << "miner" << i << ":" << "win rate" << (double)roundWinCount[i] / (double)currentRoundUpdateCount[i] << endl;
-        } else {
-            cout << "miner" << i << ":" << "win rate" << 0 << endl;
-        }
+    if (startedByA > 0) {
+        cout << "w_A: " << (double)startedByAAndMinedByA / (double)startedByA << endl;
+    } else {
+        cout << "w_A: 0" << endl;
     }
+    if (startedByO > 0) {
+        cout << "w_O: " << (double)startedByOAndMinedByA / (double)startedByO << endl;
+    } else {
+        cout << "w_O: 0" << endl;
+    }
+    cout << "startedByA: " << startedByA << endl;
+    cout << "startedByO: " << startedByO << endl;
+    cout << "startedByAAndMinedByA: " << startedByAAndMinedByA << endl;
+    cout << "startedByOAndMinedByO: " << startedByOAndMinedByO << endl;
+    cout << "startedByAAndMinedByO: " << startedByAAndMinedByO << endl;
+    cout << "startedByOAndMinedByA: " << startedByOAndMinedByA << endl;
+
+    cout << "pi_A and pi_O" << endl;
+    cout << "pi_A: " << (double)startedByA / (double)END_ROUND << endl;
+    cout << "pi_O: " << (double)startedByO / (double)END_ROUND << endl;
 
     cout << "highestHashrateNodeMinedBlocks" << endl;
     ll minedCount = 0;
@@ -522,7 +624,7 @@ void simulation(int tie) {
         if (highestHashrateNodeMinedBlocks[i]) {
             minedCount++;
         }
-        csvFile << i << ": " << (double)minedCount / (double)i << endl;
+        csvFile << i << ": " << (double)minedCount / (double)(i+1) << endl;
     }
     
     // csvFile << "RoundWinCount" << endl;
