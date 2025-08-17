@@ -316,11 +316,11 @@ void finalizeBlocks(block* block1, int tie) {
                     startedByA++;
                     startedByAAndMinedByA++;
                 } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
-                    startedByA++;
-                    startedByAAndMinedByO++;
-                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByO++;
                 } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByO++;
@@ -539,7 +539,7 @@ void simulation(int tie) {
             if (!roundStarted[newBlock->height]) {
                 roundStarted[newBlock->height] = true;
                 roundStartedBy[newBlock->height] = minter;
-                cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
+                // cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
                 finalizeBlocks(newBlock, tie);
             }
             if (currentRound < newBlock->height) {
