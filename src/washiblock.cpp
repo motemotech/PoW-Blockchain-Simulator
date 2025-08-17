@@ -319,10 +319,7 @@ void finalizeBlocks(block* block1, int tie) {
                 } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
-<<<<<<< HEAD
                     highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
-=======
->>>>>>> 2efea779d018446e089f0977fcd5de3665b8ce4a
                 } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByO++;
