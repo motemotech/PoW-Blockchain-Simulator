@@ -619,6 +619,8 @@ void simulation(int tie) {
     cout << "pi_A: " << (double)startedByA / (double)END_ROUND << endl;
     cout << "pi_O: " << (double)startedByO / (double)END_ROUND << endl;
 
+    cout << "r_A: " << endl;
+
     cout << "highestHashrateNodeMinedBlocks" << endl;
     ll minedCount = 0;
     for (int i = 0; i < END_ROUND; i++) {
