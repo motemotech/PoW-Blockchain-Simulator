@@ -67,7 +67,7 @@ ll totalHashrate;
 ll numMain[3][MAX_N];
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
-int N = 10;// num of node
+int N = 2;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 // 各マイナーが currentRound を更新した回数を記録
 ll currentRoundUpdateCount[MAX_N];
