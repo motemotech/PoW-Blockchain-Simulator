@@ -26,10 +26,10 @@ using namespace std;
 
 // trueにすると動的難易度調整が有効になり、falseにすると難易度が1.0に固定されます。
 // これに応じて、出力されるファイル名も変わります。
-const bool DYNAMIC_DIFFICULTY_ENABLED = false;
+const bool DYNAMIC_DIFFICULTY_ENABLED = true;
 
 // const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+// const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct block {
     ll height;
@@ -67,7 +67,7 @@ ll totalHashrate;
 ll numMain[3][MAX_N];
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
-int N = 20;// num of node
+int N = 40;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 // 各マイナーが currentRound を更新した回数を記録
 ll currentRoundUpdateCount[MAX_N];
