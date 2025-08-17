@@ -45,7 +45,7 @@ def load_w_and_pi_data(data_dir: str) -> pd.DataFrame:
     
     Returns DataFrame with columns: delay, pi_A, pi_O, w_A, w_O
     """
-    w_and_pi_file = os.path.join(data_dir, "1000000static_w_and_pi.csv")
+    w_and_pi_file = os.path.join(data_dir, "40nodes.csv")
     if not os.path.exists(w_and_pi_file):
         raise FileNotFoundError(f"w_and_pi file not found: {w_and_pi_file}")
     
