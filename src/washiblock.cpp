@@ -279,19 +279,17 @@ void finalizeBlocks(block* block1, int tie) {
                 if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByA++;
+                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
                 } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
-                    startedByA++;
-                    startedByAAndMinedByO++;
-                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
+                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByO++;
                 } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByO++;
-                }
-
-                if (finalizedBlock -> minter == highestHashrateNode) {
-                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
                 }
                 
                 finalizedBlock = finalizedBlock->prevBlock;
@@ -541,6 +539,7 @@ void simulation(int tie) {
             if (!roundStarted[newBlock->height]) {
                 roundStarted[newBlock->height] = true;
                 roundStartedBy[newBlock->height] = minter;
+                cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
                 finalizeBlocks(newBlock, tie);
             }
             if (currentRound < newBlock->height) {
@@ -645,6 +644,7 @@ void simulation(int tie) {
         }
         csvFile << i << ": " << (double)minedCount / (double)(i+1) << endl;
     }
+    cout << "r_A from data: " << ((double)startedByAAndMinedByA + (double)startedByOAndMinedByA) / (double)END_ROUND << endl;
     
     // csvFile << "RoundWinCount" << endl;
     // csvFile << "MinerID,Count" << endl;
