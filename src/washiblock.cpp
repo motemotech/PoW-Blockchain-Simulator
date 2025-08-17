@@ -26,7 +26,7 @@ using namespace std;
 
 // trueにすると動的難易度調整が有効になり、falseにすると難易度が1.0に固定されます。
 // これに応じて、出力されるファイル名も変わります。
-const bool DYNAMIC_DIFFICULTY_ENABLED = true;
+const bool DYNAMIC_DIFFICULTY_ENABLED = false;
 
 // const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 // const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
@@ -67,7 +67,7 @@ ll totalHashrate;
 ll numMain[3][MAX_N];
 ll propagation[MAX_N][MAX_N];
 ll mainLength;
-int N = 2;// num of node
+int N = 40;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 // 各マイナーが currentRound を更新した回数を記録
 ll currentRoundUpdateCount[MAX_N];
@@ -119,15 +119,15 @@ block* createGenesisBlock() {
 }
 int main(void) {
     cout << "akira" << endl;
-    const std::array<ll, 24> delay_values = {
-        300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
-        9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
-        1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
-       2700000, 2850000, 3000000, 4500000, 6000000
+    //const std::array<ll, 24> delay_values = {
+        //300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
+        //9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
+        //1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
+       //2700000, 2850000, 3000000, 4500000, 6000000
+    //};
+    const std::array<ll, 4> delay_values = {
+   	3000000, 4500000, 6000000
     };
-    //  const std::array<ll, 4> delay_values = {
-   	// 2850000, 3000000, 4500000, 6000000
-    // };
 
     // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
     const std::string output_dir = "tmp_data";
