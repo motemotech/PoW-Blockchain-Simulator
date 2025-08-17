@@ -315,19 +315,17 @@ void finalizeBlocks(block* block1, int tie) {
                 if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByA++;
+                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
                 } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
-                    startedByA++;
-                    startedByAAndMinedByO++;
-                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
+                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
+                    startedByA++;
+                    startedByAAndMinedByO++;
                 } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByO++;
-                } 
-
-                if (finalizedBlock -> minter == highestHashrateNode) {
-                    highestHashrateNodeMinedBlocks[finalizedBlock->height] = true;
                 }
                 
                 finalizedBlock = finalizedBlock->prevBlock;
@@ -353,6 +351,8 @@ void reset() {
 
     for (int i = 0;i < END_ROUND; i++) {
         highestHashrateNodeMinedBlocks[i] = false;
+        roundStarted[i] = false;
+        roundStartedBy[i] = -1;
     }
 
     return;
@@ -539,7 +539,7 @@ void simulation(int tie) {
             if (!roundStarted[newBlock->height]) {
                 roundStarted[newBlock->height] = true;
                 roundStartedBy[newBlock->height] = minter;
-                cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
+                // cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
                 finalizeBlocks(newBlock, tie);
             }
             if (currentRound < newBlock->height) {
