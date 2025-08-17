@@ -26,10 +26,10 @@ using namespace std;
 
 // trueにすると動的難易度調整が有効になり、falseにすると難易度が1.0に固定されます。
 // これに応じて、出力されるファイル名も変わります。
-const bool DYNAMIC_DIFFICULTY_ENABLED = true;
+const bool DYNAMIC_DIFFICULTY_ENABLED = false;
 
-// const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+// const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct block {
     ll height;
