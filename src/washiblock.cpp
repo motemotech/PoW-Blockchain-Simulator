@@ -644,7 +644,7 @@ void simulation(int tie) {
         }
         csvFile << i << ": " << (double)minedCount / (double)(i+1) << endl;
     }
-    cout << "r_A from data: " << ((double)startedByAAndMinedByA + (double)startedByOAndMinedByA) / (double)END_ROUND << endl;
+    cout << "r_A from data: " << (double)minedCount / (double)END_ROUND << endl;
     
     // csvFile << "RoundWinCount" << endl;
     // csvFile << "MinerID,Count" << endl;
