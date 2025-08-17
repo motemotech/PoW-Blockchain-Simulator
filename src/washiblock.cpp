@@ -28,8 +28,8 @@ using namespace std;
 // これに応じて、出力されるファイル名も変わります。
 const bool DYNAMIC_DIFFICULTY_ENABLED = false;
 
-const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-// const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+// const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 struct block {
     ll height;
