@@ -167,7 +167,7 @@ int main(void) {
     // cout << "block propagation time: " << delay << endl;
 
     for (ll current_delay : delay_values) {
-      hashrate[0] = N - 1;
+      hashrate[0] = 50;
        for (int i = 1; i < N; i++) {
            hashrate[i] = 1;
        }
