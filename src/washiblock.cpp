@@ -35,7 +35,6 @@ struct block {
     ll height;
     block* prevBlock;
     int minter; 
-    int roundStarter;
     ll time;
     ll rand;
     double difficulty;  // このブロック生成時の難易度
@@ -43,7 +42,7 @@ struct block {
     bool finalized = false;
     
     // コンストラクタを追加してメンバを初期化
-    block() : height(0), prevBlock(nullptr), minter(-1), roundStarter(-1), 
+    block() : height(0), prevBlock(nullptr), minter(-1),
               time(0), rand(0), difficulty(1.0), lastEpochTime(0), finalized(false) {}
 };
 
@@ -83,6 +82,9 @@ ll startedByOAndMinedByO;
 ll startedByAAndMinedByO;
 ll startedByOAndMinedByA;
 
+bool roundStarted[END_ROUND];
+int roundStartedBy[END_ROUND];
+
 ll highestHashrateNodeMainChainCount = 0;
 
 bool highestHashrateNodeMinedBlocks[END_ROUND];
@@ -110,7 +112,6 @@ block* createGenesisBlock() {
     genesisBlock->prevBlock = nullptr;
     genesisBlock->height = 0;
     genesisBlock->minter = -1;
-    genesisBlock->roundStarter = -1;
     genesisBlock->difficulty = 1.0;  // ジェネシスブロックの初期難易度設定
     genesisBlock->lastEpochTime = 0;  // ジェネシスブロックの初期時刻
     genesisBlock->finalized = true;
@@ -275,16 +276,16 @@ void finalizeBlocks(block* block1, int tie) {
             while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
                 finalizedBlock->finalized = true;
                 
-                if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByA++;
-                } else if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByO++;
-                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
-                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByO++;
                 }
@@ -313,16 +314,16 @@ void finalizeBlocks(block* block1, int tie) {
             while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
                 finalizedBlock->finalized = true;
                 
-                if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByA++;
-                } else if (finalizedBlock->minter == highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                } else if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByO++;
-                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter == highestHashrateNode) {
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByA++;
-                } else if (finalizedBlock->minter != highestHashrateNode && finalizedBlock->roundStarter != highestHashrateNode) {
+                } else if (finalizedBlock->minter != highestHashrateNode && roundStartedBy[finalizedBlock->height] != highestHashrateNode) {
                     startedByO++;
                     startedByOAndMinedByO++;
                 } 
@@ -472,7 +473,6 @@ void simulation(int tie) {
             newBlock->lastEpochTime = currentBlock[minter]->lastEpochTime;
             newBlock->difficulty = currentBlock[minter]->difficulty;  // 初期値として設定
             newBlock->finalized = false;  // デフォルト値
-            newBlock->roundStarter = -1;  // 後で設定される
 
             // cout << "Block created: miner=" << newBlock->minter << ", height=" << newBlock->height 
             //      << ", lastEpochTime=" << newBlock->lastEpochTime << endl;
@@ -535,23 +535,32 @@ void simulation(int tie) {
                 // cout << "nextPropTask->time: " << nextPropTask->time << endl;
             }
 
-            if(currentRound < newBlock->height) {
-                // cout << "currentRound: " << currentRound << ", newBlock->height: " << newBlock->height  << "roundStarter: " << minter << endl;
-                currentRound = newBlock->height;
-                // currentRound を更新したマイナーをカウント
-                // つまり、　Roundを開始したマイナーのこと
-                if (minter >= 0 && minter < N) {
-                    currentRoundUpdateCount[minter]++;
-                }
-                currentRoundStarter = minter;
-                
-                // currentRoundが更新された際に、144ブロック前のブロックをファイナライズ
+            // wとpiの精度改善案
+            // 144 heightごとにファイナライズするので、初めて、そのheightの高さをmineしたマイナーを配列などで記録していく。
+            // ファイナライズするときに、その高さを初めてマイニングしたマイナーとの比較を行っていく。
+            if (!roundStarted[newBlock->height]) {
+                roundStarted[newBlock->height] = true;
+                roundStartedBy[newBlock->height] = minter;
                 finalizeBlocks(newBlock, tie);
-                
-                // cout << "blockgeneration, miner: " << minter << ", height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << ", time: " << currentTime << endl;
             }
-
-            newBlock->roundStarter = currentRoundStarter;
+            if (currentRound < newBlock->height) {
+                currentRound = newBlock->height;
+            }
+            // if(currentRound < newBlock->height) {
+            //     // cout << "currentRound: " << currentRound << ", newBlock->height: " << newBlock->height  << "roundStarter: " << minter << endl;
+            //     currentRound = newBlock->height;
+            //     // currentRound を更新したマイナーをカウント
+            //     // つまり、　Roundを開始したマイナーのこと
+            //     if (minter >= 0 && minter < N) {
+            //         currentRoundUpdateCount[minter]++;
+            //     }
+            //     currentRoundStarter = minter;
+                
+            //     // currentRoundが更新された際に、144ブロック前のブロックをファイナライズ
+            //     finalizeBlocks(newBlock, tie);
+                
+            //     // cout << "blockgeneration, miner: " << minter << ", height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << ", time: " << currentTime << endl;
+            // }
 
             if (newBlock->height == 100000) {
                 cout << "finalizeBlocks" << endl;
@@ -619,7 +628,14 @@ void simulation(int tie) {
     cout << "pi_A: " << (double)startedByA / (double)END_ROUND << endl;
     cout << "pi_O: " << (double)startedByO / (double)END_ROUND << endl;
 
-    cout << "r_A: " << endl;
+    double w_A = (double)startedByAAndMinedByA / (double)startedByA;
+    double w_O = (double)startedByOAndMinedByA / (double)startedByO;
+    double pi_A = (double)startedByA / (double)END_ROUND;
+    double pi_O = (double)startedByO / (double)END_ROUND;
+
+    double r_A = pi_A * w_A + (1 - pi_A) * w_O;
+
+    cout << "r_A calculated by experiment data: " << r_A << endl;
 
     cout << "highestHashrateNodeMinedBlocks" << endl;
     ll minedCount = 0;
