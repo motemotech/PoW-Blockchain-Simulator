@@ -10,70 +10,20 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <functional>
+#include "../include/config.h"
 using namespace std;
-
-typedef unsigned long long ull;
-typedef long long ll;
-
-#define MAX_RN 10
-#define MAX_N 1000
-#define DIFFICULTY_ADJUSTMENT_INTERVAL 2016  // 2016ブロックごとに調整
-// #define TARGET_TIMESPAN (DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME) // 2週間相当
-const ll END_ROUND = 1000000;
-const ll TARGET_BLOCK_TIME = 600000;
-const ll TARGET_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_BLOCK_TIME;
-using namespace std;
-
-// trueにすると動的難易度調整が有効になり、falseにすると難易度が1.0に固定されます。
-// これに応じて、出力されるファイル名も変わります。
-const bool DYNAMIC_DIFFICULTY_ENABLED = false;
-
-// const std::array<ll, 20> HASH_RATE_ARRAY = {19, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-// const std::array<ll, 40> HASH_RATE_ARRAY = {39, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-struct block {
-    ll height;
-    block* prevBlock;
-    int minter; 
-    ll time;
-    ll rand;
-    double difficulty;  // このブロック生成時の難易度
-    ll lastEpochTime;   // 前回の難易度調整時刻（2016ブロック前）
-    bool finalized = false;
-    
-    // コンストラクタを追加してメンバを初期化
-    block() : height(0), prevBlock(nullptr), minter(-1),
-              time(0), rand(0), difficulty(1.0), lastEpochTime(0), finalized(false) {}
-};
-
-struct task {
-    ll time;
-    int flag; // 0 = block, 1 = propagation
-    int minter; // 0
-    int from; // 1
-    int to; // 1
-    block* propagatedBlock;
-};
 
 int currentRoundStarter;
 ll currentRound;
 ll currentTime = 0;
-ll delay = 60000; // 6000, 60000, 300000 ブロックの伝搬遅延
-ll generationTime = 600000;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
-ll hashrate[MAX_N];
+ll hashrate[MAX_N]; // ノードのハッシュレート
 ll totalHashrate;
 ll numMain[3][MAX_N];
-ll propagation[MAX_N][MAX_N];
 ll mainLength;
 int N = 40;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
-// 各マイナーが currentRound を更新した回数を記録
-ll currentRoundUpdateCount[MAX_N];
-
-// 各マイナーのブロックが144ブロックファイナリティを達成した回数を記録
-// ll roundWinCount[MAX_N];
 
 ll startedByA;
 ll startedByO;
@@ -84,10 +34,9 @@ ll startedByOAndMinedByA;
 
 bool roundStarted[END_ROUND];
 int roundStartedBy[END_ROUND];
-
-ll highestHashrateNodeMainChainCount = 0;
-
 bool highestHashrateNodeMinedBlocks[END_ROUND];
+
+ll delay;
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void finalizeBlocks(block* block1, int tie);
@@ -118,16 +67,10 @@ block* createGenesisBlock() {
     return genesisBlock;
 }
 int main(void) {
-    cout << "akira" << endl;
-    //const std::array<ll, 24> delay_values = {
-        //300000, 600000, 1500000, 3000000, 4500000, 6000000, 7500000, 
-        //9000000, 1050000, 1200000, 1350000, 1500000, 1650000, 
-        //1800000, 1950000, 2100000, 2250000, 2400000, 2550000,
-       //2700000, 2850000, 3000000, 4500000, 6000000
-    //};
-    const std::array<ll, 4> delay_values = {
-   	3000000, 4500000, 6000000
-    };
+    cout << "Start Blockchain Simulator" << endl;
+    Config::initializeDefaults();
+
+    ll highestHashrateNodeMainChainCount = 0;
 
     // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
     const std::string output_dir = "tmp_data";
@@ -136,7 +79,7 @@ int main(void) {
         mkdir(output_dir.c_str(), 0777);
     }
     
-    std::string filename_suffix = DYNAMIC_DIFFICULTY_ENABLED ? "w_and_pi.csv" : "static_w_and_pi.csv";
+    std::string filename_suffix = Config::dynamicDifficultyEnabled ? "w_and_pi.csv" : "static_w_and_pi.csv";
     std::string w_and_pi_filename = output_dir + "/" + std::to_string(END_ROUND) + filename_suffix;
     ofstream w_and_pi_file(w_and_pi_filename);
     
@@ -166,7 +109,7 @@ int main(void) {
 
     // cout << "block propagation time: " << delay << endl;
 
-    for (ll current_delay : delay_values) {
+    for (ll current_delay : Config::delayValues) {
       hashrate[0] = 50;
        for (int i = 1; i < N; i++) {
            hashrate[i] = 1;
@@ -252,7 +195,7 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
     if (ratio < 0.25) ratio = 0.25;
 
     double newDifficulty;
-    if (DYNAMIC_DIFFICULTY_ENABLED) {
+    if (Config::dynamicDifficultyEnabled) {
         newDifficulty = latestBlock->difficulty * ratio;
     } else {
         newDifficulty = 1.0;
@@ -263,7 +206,7 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
 
 void finalizeBlocks(block* block1, int tie) {
     if (block1->height != END_ROUND) {
-        ll height = block1->height;
+        ll height = block1->height; 
         block* curBlock = block1;
         
         // 144ブロックファイナリティ: 144ブロック前まで遡る
@@ -305,10 +248,6 @@ void finalizeBlocks(block* block1, int tie) {
     } else {
         cout << "finalizeBlocks" << endl;
         block* curBlock = block1;
-        // while (curBlock->height > mainLength) {
-        //     numMain[tie][curBlock->minter]++;
-        //     curBlock = curBlock->prevBlock;
-        // }
 
         if (curBlock != nullptr && curBlock->height > 0) {
             block* finalizedBlock = curBlock;
@@ -343,7 +282,6 @@ void reset() {
     mainLength = 0;
     for (int i = 0;i < N;i++) {
         currentBlock[i] = nullptr;
-        currentRoundUpdateCount[i] = 0; // リセット
         startedByA = 0;
         startedByO = 0;
         startedByAAndMinedByA = 0;
@@ -370,13 +308,13 @@ void openCsvFile(string filePath, string fileName, ofstream& csvFile) {
     
     // ファイル名のサフィックスを決定
     std::string filename_suffix;
-    if (!DYNAMIC_DIFFICULTY_ENABLED) {
+    if (!Config::dynamicDifficultyEnabled) {
         filename_suffix = "_static_plot.csv";
     } else {
         filename_suffix = "_plot.csv";
     }
     
-    // 完全なファイル名を構築
+    // 完全なファイル名を 構築
     std::string fullFileName = filePath + "/" + fileName + filename_suffix;
     
     // CSVファイルを開く
@@ -405,39 +343,30 @@ void simulation(int tie) {
     std::queue<task*> taskStore;
 
     ll lastPlotTime = 0;
-    ll plotInterval = (END_ROUND * TARGET_BLOCK_TIME) / 100LL;
-    if (plotInterval == 0) plotInterval = TARGET_BLOCK_TIME;
+    ll plotInterval = (END_ROUND * TARGET_GENERATION_TIME) / 100LL;
+    if (plotInterval == 0) plotInterval = TARGET_GENERATION_TIME;
 
     // CSVファイル用の出力ストリームを作成（出力先: ./data 配下）
     const std::string output_dir = "tmp_data";
     ofstream csvFile;
-    openCsvFile(output_dir, std::to_string(delay) + "_" + std::to_string(generationTime) + "_" + std::to_string(END_ROUND), csvFile);
+    openCsvFile(output_dir, std::to_string(Config::propagationDelay) + "_" + std::to_string(TARGET_GENERATION_TIME) + "_" + std::to_string(END_ROUND), csvFile);
     
 
-    // ========== 最初のブロックを生成 ==========
     block* genesisBlock = createGenesisBlock();
     blockQue.push(genesisBlock);
 
-    // ========== 最初のマイナーのタスクを設定 ==========
-    // Setting up the initial block to each miner
-    // baseTimeは、ターゲットとなる生成間隔に対して、ノードのハッシュレート割合の逆数をかけたもの。
-    // なので、平均的にどれくらいの時間でそのノードがブロックをマイニングするか表したもの
-    // adjustedTimeは、baseTimeに対して難易度をかけて調整したもの。
-    // minigTimeは、指数分布に従うようにしている
-    // taskQueという優先度付きキューは、timeの早い順に並んでいる。
-    // この場合は、minigTimeの小さい順 <- これはcompare関数で決められている。
     for (int i = 0;i < N;i++) {
         currentBlock[i] = genesisBlock;
 
         task* nextBlockTask = new task;
         // 初期難易度を考慮したマイニング時間の計算
         double initialDifficulty = 1.0;
-        double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[i];
+        double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[i];
         double adjustedTime = baseTime * initialDifficulty;
         
         ll miningTime = (ll)(exp_dist(random_value) * adjustedTime);
         nextBlockTask->time = miningTime;
-        nextBlockTask->flag = 0;
+        nextBlockTask->flag = TaskType::BLOCK_GENERATION;
         nextBlockTask->minter = i;
         taskQue.push(nextBlockTask);
         currentMiningTask[i] = nextBlockTask;
@@ -449,7 +378,7 @@ void simulation(int tie) {
         taskQue.pop();
         currentTime = currentTask->time;
 
-        if (currentTask->flag == 0) { //block generation
+        if (currentTask->flag == TaskType::BLOCK_GENERATION) { //block generation
             int minter = currentTask->minter;
             if (currentMiningTask[minter] != currentTask) {
                 continue;
@@ -498,27 +427,18 @@ void simulation(int tie) {
             } else {
                 nextBlockTask = new task;
             }
-            
-            // double nextDifficulty = calculateDifficulty(newBlock, minter);
-            // cout << "newBlock->difficulty: " << newBlock->difficulty << endl;
-            // cout << "nextDifficulty: " << nextDifficulty << endl;
-            double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[minter];
-            // cout << "baseTime: " << baseTime << endl;
+
+            double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[minter];
             double adjustedTime = baseTime * newBlock->difficulty;
-            // cout << "adjustedTime: " << adjustedTime << endl;
             
             double randomFactor = exp_dist(random_value);
-            // cout << "randomFactor: " << randomFactor << endl;
             ll miningTime = (ll)(randomFactor * adjustedTime);
-            // cout << "miningTime: " << miningTime << endl;
-            // cout << "currentTime: " << currentTime << endl;
             nextBlockTask->time = currentTime + miningTime;
             
-            nextBlockTask->flag = 0;
+            nextBlockTask->flag = TaskType::BLOCK_GENERATION;
             nextBlockTask->minter = minter;
             taskQue.push(nextBlockTask);
             currentMiningTask[minter] = nextBlockTask;
-            // cout << "nextBlockTask->time: " << nextBlockTask->time << endl;
 
             for (int i = 0;i < N;i++) { // propagation task
                 task* nextPropTask;
@@ -528,41 +448,21 @@ void simulation(int tie) {
                     nextPropTask = new task;
                 }
                 nextPropTask->time = currentTime + getPropagationTime(minter, i);
-                nextPropTask->flag = 1;
+                nextPropTask->flag = TaskType::PROPAGATION;
                 nextPropTask->to = i;
                 nextPropTask->from = minter;
                 nextPropTask->propagatedBlock = newBlock;
                 taskQue.push(nextPropTask);
-                // cout << "nextPropTask->time: " << nextPropTask->time << endl;
             }
 
-            // wとpiの精度改善案
-            // 144 heightごとにファイナライズするので、初めて、そのheightの高さをmineしたマイナーを配列などで記録していく。
-            // ファイナライズするときに、その高さを初めてマイニングしたマイナーとの比較を行っていく。
             if (!roundStarted[newBlock->height]) {
                 roundStarted[newBlock->height] = true;
                 roundStartedBy[newBlock->height] = minter;
-                // cout << "roundStartedBy[" << newBlock->height << "]: " << minter << endl;
                 finalizeBlocks(newBlock, tie);
             }
             if (currentRound < newBlock->height) {
                 currentRound = newBlock->height;
             }
-            // if(currentRound < newBlock->height) {
-            //     // cout << "currentRound: " << currentRound << ", newBlock->height: " << newBlock->height  << "roundStarter: " << minter << endl;
-            //     currentRound = newBlock->height;
-            //     // currentRound を更新したマイナーをカウント
-            //     // つまり、　Roundを開始したマイナーのこと
-            //     if (minter >= 0 && minter < N) {
-            //         currentRoundUpdateCount[minter]++;
-            //     }
-            //     currentRoundStarter = minter;
-                
-            //     // currentRoundが更新された際に、144ブロック前のブロックをファイナライズ
-            //     finalizeBlocks(newBlock, tie);
-                
-            //     // cout << "blockgeneration, miner: " << minter << ", height: " << newBlock->height << ", difficulty: " << newBlock->difficulty << ", time: " << currentTime << endl;
-            // }
 
             if (newBlock->height == 100000) {
                 cout << "finalizeBlocks" << endl;
@@ -575,7 +475,6 @@ void simulation(int tie) {
             bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
             
             if (mainchainChanged) {
-                // 新しいメインチェーンの先端ブロックに基づいて、次のマイニングの難易度を計算
                 double latestDifficulty = calculateDifficulty(currentBlock[to], to);
                 
                 task* newMiningTask;
@@ -585,13 +484,13 @@ void simulation(int tie) {
                     newMiningTask = new task;
                 }
                 
-                double baseTime = (double)generationTime * (double)totalHashrate / (double)hashrate[to];
+                double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[to];
                 double adjustedTime = baseTime * latestDifficulty;
                 
                 double randomFactor = exp_dist(random_value);
                 ll miningTime = (ll)(randomFactor * adjustedTime);
                 newMiningTask->time = currentTime + miningTime;
-                newMiningTask->flag = 0;
+                newMiningTask->flag = TaskType::BLOCK_GENERATION;
                 newMiningTask->minter = to;
                 taskQue.push(newMiningTask);
                 currentMiningTask[to] = newMiningTask;
@@ -648,30 +547,6 @@ void simulation(int tie) {
         csvFile << i << ": " << (double)minedCount / (double)(i+1) << endl;
     }
     cout << "r_A from data: " << (double)minedCount / (double)END_ROUND << endl;
-    
-    // csvFile << "RoundWinCount" << endl;
-    // csvFile << "MinerID,Count" << endl;
-    // for (int i = 0; i < N; i++) {
-    //     csvFile << i << "," << roundWinCount[i] << endl;
-    // }
-    // csvFile << endl;
-    
-    // // 2. すべてのminterのcurrentRoundUpdateCount
-    // csvFile << "CurrentRoundUpdateCount" << endl;
-    // csvFile << "MinerID,Count" << endl;
-    // for (int i = 0; i < N; i++) {
-    //     csvFile << i << "," << currentRoundUpdateCount[i] << endl;
-    // }
-    // csvFile << endl;
-    
-    // // 3. highestHashrateNodeMinedBlocksの配列
-    // csvFile << "HighestHashrateNodeMinedBlocks" << endl;
-    // csvFile << "BlockHeight,WasMinedByHighestHashrateNode" << endl;
-    // for (ll height = 1; height <= currentRound; height++) {
-    //     if (height < END_ROUND) {
-    //         csvFile << height << "," << (highestHashrateNodeMinedBlocks[height] ? "1" : "0") << endl;
-    //     }
-    // }
 
     csvFile.close();
 }
