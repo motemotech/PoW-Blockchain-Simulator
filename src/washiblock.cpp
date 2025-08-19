@@ -10,6 +10,8 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <functional>
+#include <chrono>
+#include <sstream>
 #include "../include/config.h"
 using namespace std;
 
@@ -22,7 +24,6 @@ ll hashrate[MAX_N]; // ノードのハッシュレート
 ll totalHashrate;
 ll numMain[3][MAX_N];
 ll mainLength;
-int N = 40;// num of node
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
 
 ll startedByA;
@@ -42,10 +43,12 @@ bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
 void finalizeBlocks(block* block1, int tie);
 void saveDataInCsv(string filePath, string fileName, ofstream& csvFile);
 void writeDataToCsv(ofstream& csvFile, ll height, ll time, double proportion, double difficulty);
-void simulation(int tie);
+void simulation(int tie, const std::string& timestamp_dir);
 void reset();
 ll getPropagationTime(int i, int j);
 double calculateDifficulty(block* latestBlock, int nodeId);  // ノード固有の難易度計算関数
+void openCsvFile(string filePath, string fileName, ofstream& csvFile);
+string createTimestampDirectory();
 
 // 乱数生成のためのシード値を生成する
 std::random_device seed_gen;
@@ -66,21 +69,19 @@ block* createGenesisBlock() {
     genesisBlock->finalized = true;
     return genesisBlock;
 }
+
 int main(void) {
     cout << "Start Blockchain Simulator" << endl;
     Config::initializeDefaults();
 
     ll highestHashrateNodeMainChainCount = 0;
 
+    // タイムスタンプベースのディレクトリを作成
+    std::string timestamp_dir = createTimestampDirectory();
+
     // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
-    const std::string output_dir = "tmp_data";
-    struct stat st;
-    if (stat(output_dir.c_str(), &st) != 0) {
-        mkdir(output_dir.c_str(), 0777);
-    }
-    
-    std::string filename_suffix = Config::dynamicDifficultyEnabled ? "w_and_pi.csv" : "static_w_and_pi.csv";
-    std::string w_and_pi_filename = output_dir + "/" + std::to_string(END_ROUND) + filename_suffix;
+    std::string difficulty_type = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
+    std::string w_and_pi_filename = timestamp_dir + "/" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_type + "_w_pi.csv";
     ofstream w_and_pi_file(w_and_pi_filename);
     
     if (!w_and_pi_file.is_open()) {
@@ -93,36 +94,20 @@ int main(void) {
     // CSVファイルのヘッダーを書き込み
     w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
 
-    // hashrate[0] = N - 1;
-    // for (int i = 1;i < N;i++) {
-    //     hashrate[i] = 1;
-    // }
-
-
-    // for (int i = 0;i < N;i++) {
-    //      for (int j = 0;j < N;j++) {
-    //          getPropagationTime(i, j);
-    //      }
-    // }
-
-    // simulation(0);
-
-    // cout << "block propagation time: " << delay << endl;
-
     for (ll current_delay : Config::delayValues) {
-      hashrate[0] = 50;
-       for (int i = 1; i < N; i++) {
+      hashrate[0] = Config::nodeCount - 1;
+       for (int i = 1; i < Config::nodeCount; i++) {
            hashrate[i] = 1;
        }
 
        totalHashrate = 0;
-       for (int i = 0; i < N; i++) {
+       for (int i = 0; i < Config::nodeCount; i++) {
            totalHashrate += hashrate[i];
        }
        delay = current_delay;
        cout << "--- Running simulation with delay: " << delay << " ---" << endl;
        reset();
-       simulation(0);
+       simulation(0, timestamp_dir);
        
        // シミュレーション後にw_A, w_O, pi_A, pi_Oの値を計算してCSVに書き込み
        double pi_A = (double)startedByA / (double)END_ROUND;
@@ -246,7 +231,6 @@ void finalizeBlocks(block* block1, int tie) {
         mainLength = max(mainLength, curBlock->height);
         return;
     } else {
-        cout << "finalizeBlocks" << endl;
         block* curBlock = block1;
 
         if (curBlock != nullptr && curBlock->height > 0) {
@@ -280,7 +264,7 @@ void reset() {
     currentRound = 0;
     currentTime = 0;
     mainLength = 0;
-    for (int i = 0;i < N;i++) {
+    for (int i = 0;i < Config::nodeCount;i++) {
         currentBlock[i] = nullptr;
         startedByA = 0;
         startedByO = 0;
@@ -299,34 +283,7 @@ void reset() {
     return;
 }
 
-void openCsvFile(string filePath, string fileName, ofstream& csvFile) {
-    // ディレクトリが存在しない場合は作成
-    struct stat st;
-    if (stat(filePath.c_str(), &st) != 0) {
-        mkdir(filePath.c_str(), 0777);
-    }
-    
-    // ファイル名のサフィックスを決定
-    std::string filename_suffix;
-    if (!Config::dynamicDifficultyEnabled) {
-        filename_suffix = "_static_plot.csv";
-    } else {
-        filename_suffix = "_plot.csv";
-    }
-    
-    // 完全なファイル名を 構築
-    std::string fullFileName = filePath + "/" + fileName + filename_suffix;
-    
-    // CSVファイルを開く
-    csvFile.open(fullFileName);
-    if (!csvFile.is_open()) {
-        cerr << "[error] Failed to open CSV file: " << fullFileName << endl;
-    } else {
-        cout << "[info] Writing CSV to: " << fullFileName << endl;
-    }
-}
-
-void simulation(int tie) {
+void simulation(int tie, const std::string& timestamp_dir) {
     auto compare = [](task* a, task* b) {
       return a->time > b->time;
     };
@@ -347,15 +304,15 @@ void simulation(int tie) {
     if (plotInterval == 0) plotInterval = TARGET_GENERATION_TIME;
 
     // CSVファイル用の出力ストリームを作成（出力先: ./data 配下）
-    const std::string output_dir = "tmp_data";
     ofstream csvFile;
-    openCsvFile(output_dir, std::to_string(Config::propagationDelay) + "_" + std::to_string(TARGET_GENERATION_TIME) + "_" + std::to_string(END_ROUND), csvFile);
+    std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
+    openCsvFile(timestamp_dir, std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_prefix + "_share", csvFile);
     
 
     block* genesisBlock = createGenesisBlock();
     blockQue.push(genesisBlock);
 
-    for (int i = 0;i < N;i++) {
+    for (int i = 0;i < Config::nodeCount;i++) {
         currentBlock[i] = genesisBlock;
 
         task* nextBlockTask = new task;
@@ -440,7 +397,7 @@ void simulation(int tie) {
             taskQue.push(nextBlockTask);
             currentMiningTask[minter] = nextBlockTask;
 
-            for (int i = 0;i < N;i++) { // propagation task
+            for (int i = 0;i < Config::nodeCount;i++) { // propagation task
                 task* nextPropTask;
                 if (taskStore.size() > 0) {
                     nextPropTask = taskStore.front();taskStore.pop();
@@ -549,4 +506,48 @@ void simulation(int tie) {
     cout << "r_A from data: " << (double)minedCount / (double)END_ROUND << endl;
 
     csvFile.close();
+}
+
+string createTimestampDirectory() {
+    // 現在時刻を取得
+    auto now = std::chrono::system_clock::now();
+    auto time_t = std::chrono::system_clock::to_time_t(now);
+    
+    // タイムスタンプを文字列に変換
+    std::stringstream ss;
+    ss << std::put_time(std::localtime(&time_t), "%Y%m%d_%H%M%S");
+    std::string timestamp = ss.str();
+    
+    // ディレクトリパスを構築
+    std::string dir_path = "data/" + timestamp;
+    
+    // ディレクトリを作成
+    struct stat st;
+    if (stat("data", &st) != 0) {
+        mkdir("data", 0777);
+    }
+    if (stat(dir_path.c_str(), &st) != 0) {
+        mkdir(dir_path.c_str(), 0777);
+    }
+    
+    return dir_path;
+}
+
+void openCsvFile(string filePath, string fileName, ofstream& csvFile) {
+    // ディレクトリが存在しない場合は作成
+    struct stat st;
+    if (stat(filePath.c_str(), &st) != 0) {
+        mkdir(filePath.c_str(), 0777);
+    }
+    
+    // 完全なファイル名を構築（delta_node数_endround数.csv の形式）
+    std::string fullFileName = filePath + "/" + fileName + ".csv";
+    
+    // CSVファイルを開く
+    csvFile.open(fullFileName);
+    if (!csvFile.is_open()) {
+        cerr << "[error] Failed to open CSV file: " << fullFileName << endl;
+    } else {
+        cout << "[info] Writing CSV to: " << fullFileName << endl;
+    }
 }

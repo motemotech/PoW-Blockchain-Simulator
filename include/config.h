@@ -6,7 +6,7 @@
 // 最大ノード数
 #define MAX_N 1000
 
-constexpr ll END_ROUND = 100000;
+constexpr ll END_ROUND = 10000;
 
 // ブロックの生成間隔
 constexpr ll TARGET_GENERATION_TIME = 600000;
@@ -22,15 +22,15 @@ namespace Config {
     constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
     constexpr ll DEFAULT_DELAY = TARGET_GENERATION_TIME / 10;
 
-    const std::vector<ll> DEFAULT_DELAY_VALUES = {
-        TARGET_GENERATION_TIME / 10,
-        TARGET_GENERATION_TIME / 5,
-        TARGET_GENERATION_TIME,
-        TARGET_GENERATION_TIME * 5,
-        TARGET_GENERATION_TIME * 10,
-    };
+    // const std::vector<ll> DEFAULT_DELAY_VALUES = {
+    //     TARGET_GENERATION_TIME / 10,
+    //     TARGET_GENERATION_TIME / 5,
+    //     TARGET_GENERATION_TIME,
+    //     TARGET_GENERATION_TIME * 5,
+    //     TARGET_GENERATION_TIME * 10,
+    // };
 
-    const std::vector<ll> FULL_DELAY_VALUES = {
+    const std::vector<ll> DEFAULT_DELAY_VALUES = {
         TARGET_GENERATION_TIME / 10,
         TARGET_GENERATION_TIME / 9,
         TARGET_GENERATION_TIME / 8,
