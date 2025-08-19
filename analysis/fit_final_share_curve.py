@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 画像出力用データディレクトリを指定する変数（Noneの場合は最新ディレクトリを自動選択）
-DATA_DIR_OVERRIDE: Optional[str] = None
+DATA_DIR_OVERRIDE: Optional[str] = "data/20250819_153205"
 
 def compute_theoretical_values(alpha_a: float, T: float, Delta: float) -> Tuple[float, float, float, float, float]:
     E = np.exp(- alpha_a * Delta / T)
@@ -61,8 +61,8 @@ def detect_difficulty_type(data_dir: str) -> str:
     raise FileNotFoundError("Could not determine difficulty type from file names")
 
 
-def load_w_and_pi_data(data_dir: str, difficulty_type: str) -> pd.DataFrame:
-    """difficulty_typeに基づいてw_piファイルを読み込み"""
+def load_w_and_pi_data(data_dir: str, difficulty_type: str) -> Tuple[pd.DataFrame, int]:
+    """difficulty_typeに基づいてw_piファイルを読み込み、ノード数も返す"""
     pattern = os.path.join(data_dir, f"*_{difficulty_type}_w_pi.csv")
     files = glob.glob(pattern)
     
@@ -72,10 +72,24 @@ def load_w_and_pi_data(data_dir: str, difficulty_type: str) -> pd.DataFrame:
     # 複数ファイルがある場合は最初のものを使用
     w_and_pi_file = files[0]
     df = pd.read_csv(w_and_pi_file)
-    return df
+    
+    # ファイル名からノード数を取得
+    # フォーマット: [ノード数]_[endround数]_{difficulty_type}_w_pi.csv
+    base = os.path.basename(w_and_pi_file)
+    core = base.replace(f"_{difficulty_type}_w_pi.csv", "")
+    try:
+        parts = core.split("_")
+        if len(parts) >= 1:
+            node_count = int(parts[0])  # 最初の部分がノード数
+        else:
+            raise ValueError("Could not parse node count from filename")
+    except Exception:
+        raise RuntimeError(f"Could not determine node count from w_pi file name: {w_and_pi_file}")
+    
+    return df, node_count
 
 
-def load_final_share_points(data_dir: str, difficulty_type: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+def load_final_share_points(data_dir: str, difficulty_type: str) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int]:
     pattern = os.path.join(data_dir, f"*_{difficulty_type}_share.csv")
     files = sorted(glob.glob(pattern))
     if not files:
@@ -84,19 +98,23 @@ def load_final_share_points(data_dir: str, difficulty_type: str) -> Tuple[np.nda
     deltas: List[float] = []
     Ts: List[float] = []
     ys: List[float] = []
+    node_count = None
 
     for fp in files:
         base = os.path.basename(fp)
-        # filename: {delay}_{nodeCount}_{endRound}_{difficulty_type}_share.csv
+        # filename: {delta}_{nodeCount}_{difficulty_type}_share.csv
         # Remove the suffix to get the core part
         core = base.replace(f"_{difficulty_type}_share.csv", "")
         try:
             parts = core.split("_")
-            delay = float(parts[0])
-            if len(parts) >= 3:
-                T = 600000  # Fixed generation time
-            else:
-                T = 600000  # Default value
+            delay = float(parts[0])  # 最初の部分がdelta
+            if len(parts) >= 2:
+                current_node_count = int(parts[1])  # 2番目の部分がノード数
+                if node_count is None:
+                    node_count = current_node_count
+                elif node_count != current_node_count:
+                    print(f"Warning: Inconsistent node count found: {node_count} vs {current_node_count}")
+            T = 600000  # Fixed generation time
         except Exception:
             # Skip unexpected names
             continue
@@ -119,8 +137,11 @@ def load_final_share_points(data_dir: str, difficulty_type: str) -> Tuple[np.nda
 
     if not deltas:
         raise RuntimeError("No usable data points found.")
+    
+    if node_count is None:
+        raise RuntimeError("Could not determine node count from file names.")
 
-    return np.array(deltas, dtype=float), np.array(Ts, dtype=float), np.array(ys, dtype=float)
+    return np.array(deltas, dtype=float), np.array(Ts, dtype=float), np.array(ys, dtype=float), node_count
 
 def compute_metrics(y_true: np.ndarray, y_pred: np.ndarray) -> Tuple[float, float]:
     """Return (MSE, R^2)."""
@@ -193,7 +214,7 @@ def main() -> None:
     print(f"Detected difficulty type: {difficulty_type}")
     
     # Load experimental data
-    w_and_pi_df = load_w_and_pi_data(data_dir, difficulty_type)
+    w_and_pi_df, node_count_w_pi = load_w_and_pi_data(data_dir, difficulty_type)
     
     # Extract pi and W data from CSV
     Delta_pi_w = w_and_pi_df['delay'].values
@@ -203,7 +224,13 @@ def main() -> None:
     w_O_data = w_and_pi_df['w_O'].values
 
     # Load final share points (r_A data from simulation)
-    Delta_final, T_final, r_A_data_raw = load_final_share_points(data_dir, difficulty_type)
+    Delta_final, T_final, r_A_data_raw, node_count_share = load_final_share_points(data_dir, difficulty_type)
+    
+    # Verify node counts are consistent
+    if node_count_w_pi != node_count_share:
+        print(f"Warning: Node count mismatch between w_pi ({node_count_w_pi}) and share ({node_count_share}) files")
+    
+    node_count = node_count_w_pi  # Use w_pi node count as primary
 
     # Sort experimental data by Delta
     pi_w_order = np.argsort(Delta_pi_w)
@@ -283,8 +310,8 @@ def main() -> None:
     output_dir = f"./image/{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
     
-    # Generate output filenames with difficulty type prefix
-    data_suffix = difficulty_type
+    # Generate output filenames with node count and difficulty type
+    data_suffix = f"{node_count}_{difficulty_type}"
     
     create_individual_comparison_plot("r_A", Delta_final_sorted, T_fixed, r_A_data_sorted, r_A_theory_final, 
                                     mse_r_A, r2_r_A, f"{output_dir}/r_A_{data_suffix}.png", show_plot)
