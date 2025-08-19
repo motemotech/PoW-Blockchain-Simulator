@@ -6,7 +6,7 @@
 // 最大ノード数
 #define MAX_N 1000
 
-constexpr ll END_ROUND = 10000;
+constexpr ll END_ROUND = 100000;
 
 // ブロックの生成間隔
 constexpr ll TARGET_GENERATION_TIME = 600000;
@@ -18,7 +18,7 @@ constexpr ll DIFFICULTY_ADJUSTMENT_INTERVAL = 2016;
 constexpr ll TARGET_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_GENERATION_TIME;
 
 namespace Config {
-    constexpr int DEFAULT_NODE_COUNT = 20;
+    constexpr int DEFAULT_NODE_COUNT = 100;
     constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
     constexpr ll DEFAULT_DELAY = TARGET_GENERATION_TIME / 10;
 
