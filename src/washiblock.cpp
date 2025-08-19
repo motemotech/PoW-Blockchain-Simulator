@@ -95,7 +95,8 @@ int main(void) {
     w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
 
     for (ll current_delay : Config::delayValues) {
-      hashrate[0] = Config::nodeCount - 1;
+      // hashrate[0] = Config::nodeCount - 1;
+      hashrate[0] = 10000;
        for (int i = 1; i < Config::nodeCount; i++) {
            hashrate[i] = 1;
        }
