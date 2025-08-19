@@ -19,7 +19,7 @@ constexpr ll TARGET_TIMESPAN = DIFFICULTY_ADJUSTMENT_INTERVAL * TARGET_GENERATIO
 
 namespace Config {
     constexpr int DEFAULT_NODE_COUNT = 100;
-    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
+    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = false;
     constexpr ll DEFAULT_DELAY = TARGET_GENERATION_TIME / 10;
 
     // const std::vector<ll> DEFAULT_DELAY_VALUES = {
