@@ -2,8 +2,11 @@
 build:
     g++ -std=c++11 -I include src/washiblock.cpp src/config.cpp -o ./output/washiblock
 
-run: build
+run-btc: build
     ./output/washiblock
+
+run-eth: build
+    ./output/washiblock ETH
 
 # Python Environment
 venv:

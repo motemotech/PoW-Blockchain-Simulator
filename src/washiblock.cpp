@@ -46,7 +46,9 @@ void writeDataToCsv(ofstream& csvFile, ll height, ll time, double proportion, do
 void simulation(int tie, const std::string& timestamp_dir);
 void reset();
 ll getPropagationTime(int i, int j);
-double calculateDifficulty(block* latestBlock, int nodeId);  // ノード固有の難易度計算関数
+double calculateDifficulty(block* latestBlock);  // ブロックチェーンタイプに応じた難易度計算関数
+double calculateDifficultyBTC(block* latestBlock);  // Bitcoin用難易度計算
+double calculateDifficultyETH(block* latestBlock);  // Ethereum用難易度計算
 void openCsvFile(string filePath, string fileName, ofstream& csvFile);
 string createTimestampDirectory();
 
@@ -70,9 +72,28 @@ block* createGenesisBlock() {
     return genesisBlock;
 }
 
-int main(void) {
+int main(int argc, char* argv[]) {
     cout << "Start Blockchain Simulator" << endl;
-    Config::initializeDefaults();
+    
+    // コマンドライン引数でブロックチェーンタイプを指定
+    BlockchainType blockchainType = BlockchainType::BITCOIN;  // デフォルト
+    if (argc > 1) {
+        std::string arg = argv[1];
+        if (arg == "BTC" || arg == "bitcoin") {
+            blockchainType = BlockchainType::BITCOIN;
+        } else if (arg == "ETH" || arg == "ethereum") {
+            blockchainType = BlockchainType::ETHEREUM;
+        } else {
+            cout << "Usage: " << argv[0] << " [BTC|ETH|bitcoin|ethereum]" << endl;
+            cout << "Using default: Bitcoin" << endl;
+        }
+    }
+    
+    // 選択されたブロックチェーンタイプで設定を初期化
+    Config::setBlockchainType(blockchainType);
+    
+    // 現在の設定を表示
+    Config::printCurrentConfig();
 
     ll highestHashrateNodeMainChainCount = 0;
 
@@ -80,8 +101,9 @@ int main(void) {
     std::string timestamp_dir = createTimestampDirectory();
 
     // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
+    std::string blockchain_type = Config::getBlockchainTypeName();
     std::string difficulty_type = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
-    std::string w_and_pi_filename = timestamp_dir + "/" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_type + "_w_pi.csv";
+    std::string w_and_pi_filename = timestamp_dir + "/" + blockchain_type + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_type + "_w_pi.csv";
     ofstream w_and_pi_file(w_and_pi_filename);
     
     if (!w_and_pi_file.is_open()) {
@@ -95,8 +117,8 @@ int main(void) {
     w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
 
     for (ll current_delay : Config::delayValues) {
-      // hashrate[0] = Config::nodeCount - 1;
-      hashrate[0] = 10000;
+      hashrate[0] = Config::nodeCount - 1;
+    //   hashrate[0] = 10000;
        for (int i = 1; i < Config::nodeCount; i++) {
            hashrate[i] = 1;
        }
@@ -123,7 +145,6 @@ int main(void) {
 
     cout << "--- All simulations finished. ---" << endl;
 
-    // w_and_pi CSVファイルをクローズ
     w_and_pi_file.close();
     cout << "[info] w_and_pi CSV file closed successfully." << endl;
 
@@ -150,7 +171,7 @@ bool chooseMainchain(block* block1, block* block2, int from, int to, int tie) {
         }
     }
 
-    return false; // メインチェーンは変更されなかった
+    return false;
 }
 
 ll getPropagationTime(int i, int j) {
@@ -158,25 +179,32 @@ ll getPropagationTime(int i, int j) {
     else return delay;
 }
 
-double calculateDifficulty(block* latestBlock, int nodeId) {
+double calculateDifficulty(block* latestBlock) {
+    switch (Config::currentBlockchainType) {
+        case BlockchainType::BITCOIN:
+            return calculateDifficultyBTC(latestBlock);
+        case BlockchainType::ETHEREUM:
+            return calculateDifficultyETH(latestBlock);
+        default:
+            return calculateDifficultyBTC(latestBlock);
+    }
+}
+
+double calculateDifficultyBTC(block* latestBlock) {
     if (latestBlock == nullptr || latestBlock->height == 0) {
         return 1.0;
     }
     
-    if (latestBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL != 0) {
+    if (latestBlock->height % Config::difficultyAdjustmentInterval != 0) {
         return latestBlock->difficulty;
     }
     
-    if (latestBlock->height < DIFFICULTY_ADJUSTMENT_INTERVAL) {
+    if (latestBlock->height < Config::difficultyAdjustmentInterval) {
         return latestBlock->difficulty; 
     }
-    
-    // cout << "latestBlock->time: " << latestBlock->time << endl;
-    // cout << "latestBlock->lastEpochTime: " << latestBlock->lastEpochTime << endl;
+
     ll actualTimespan = latestBlock->time - latestBlock->lastEpochTime;
-    // cout << "actualTimespan: " << actualTimespan << endl;
-    double ratio = (double)TARGET_TIMESPAN / (double)actualTimespan;
-    // cout << "ratio: " << ratio << endl;
+    double ratio = (double)Config::targetGenerationTime / (double)actualTimespan;
     if (ratio > 4.0) ratio = 4.0;
     if (ratio < 0.25) ratio = 0.25;
 
@@ -187,6 +215,37 @@ double calculateDifficulty(block* latestBlock, int nodeId) {
         newDifficulty = 1.0;
     }
     
+    return newDifficulty;
+}
+
+double calculateDifficultyETH(block* latestBlock) {
+    if (latestBlock == nullptr || latestBlock->height == 0) {
+        return 1.0;
+    }
+
+    if (latestBlock->prevBlock == nullptr) {
+        return latestBlock->difficulty;
+    }
+
+    block* grandParentBlock = latestBlock->prevBlock;
+
+    ll timeDiff = latestBlock->time - grandParentBlock->time;
+
+    double adjustmentFactor = 1.0 - (double)timeDiff / (double)Config::targetGenerationTime;
+
+    if (adjustmentFactor < -99.0) adjustmentFactor = -99.0;
+    if (adjustmentFactor > 1.0) adjustmentFactor = 1.0;
+
+    double difficultyAdjustment = latestBlock->difficulty / (double)2048 * adjustmentFactor;
+
+    double uncleAdjustment = 0.0;
+
+    double newDifficulty = latestBlock->difficulty + difficultyAdjustment + uncleAdjustment;
+
+    if (newDifficulty < 0.1) {
+        newDifficulty = 0.1;  // 最小値を0.1に修正
+    }
+
     return newDifficulty;
 }
 
@@ -301,13 +360,14 @@ void simulation(int tie, const std::string& timestamp_dir) {
     std::queue<task*> taskStore;
 
     ll lastPlotTime = 0;
-    ll plotInterval = (END_ROUND * TARGET_GENERATION_TIME) / 100LL;
-    if (plotInterval == 0) plotInterval = TARGET_GENERATION_TIME;
+    ll plotInterval = (END_ROUND * Config::targetGenerationTime) / 100LL;
+    if (plotInterval == 0) plotInterval = Config::targetGenerationTime;
 
     // CSVファイル用の出力ストリームを作成（出力先: ./data 配下）
     ofstream csvFile;
+    std::string blockchain_prefix = Config::getBlockchainTypeName();
     std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
-    openCsvFile(timestamp_dir, std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_prefix + "_share", csvFile);
+    openCsvFile(timestamp_dir, blockchain_prefix + "_" + std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_prefix + "_share", csvFile);
     
 
     block* genesisBlock = createGenesisBlock();
@@ -317,9 +377,8 @@ void simulation(int tie, const std::string& timestamp_dir) {
         currentBlock[i] = genesisBlock;
 
         task* nextBlockTask = new task;
-        // 初期難易度を考慮したマイニング時間の計算
         double initialDifficulty = 1.0;
-        double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[i];
+        double baseTime = (double)Config::targetGenerationTime * (double)totalHashrate / (double)hashrate[i];
         double adjustedTime = baseTime * initialDifficulty;
         
         ll miningTime = (ll)(exp_dist(random_value) * adjustedTime);
@@ -330,13 +389,12 @@ void simulation(int tie, const std::string& timestamp_dir) {
         currentMiningTask[i] = nextBlockTask;
     }
 
-    // taskQueが空になるか、currentRoundがEND_ROUNDになるまでループを実行する。
     while(taskQue.size() > 0 && currentRound < END_ROUND) {
         task* currentTask = taskQue.top();
         taskQue.pop();
         currentTime = currentTask->time;
 
-        if (currentTask->flag == TaskType::BLOCK_GENERATION) { //block generation
+        if (currentTask->flag == TaskType::BLOCK_GENERATION) {
             int minter = currentTask->minter;
             if (currentMiningTask[minter] != currentTask) {
                 continue;
@@ -346,10 +404,8 @@ void simulation(int tie, const std::string& timestamp_dir) {
             block* newBlock;
             if (blockStore.size() > 0) {
                 newBlock = blockStore.front();blockStore.pop();
-                // cout << "Reusing block from blockStore, address: " << newBlock << endl;
             } else {
                 newBlock = new block;
-                // cout << "Creating new block, address: " << newBlock << endl;
             }
             
             // 再利用したブロックのメンバを適切に初期化
@@ -362,20 +418,16 @@ void simulation(int tie, const std::string& timestamp_dir) {
             newBlock->difficulty = currentBlock[minter]->difficulty;  // 初期値として設定
             newBlock->finalized = false;  // デフォルト値
 
-            // cout << "Block created: miner=" << newBlock->minter << ", height=" << newBlock->height 
-            //      << ", lastEpochTime=" << newBlock->lastEpochTime << endl;
-            newBlock->difficulty = calculateDifficulty(currentBlock[minter], minter);
-            if (newBlock->height % DIFFICULTY_ADJUSTMENT_INTERVAL == 1) {
+            newBlock->difficulty = calculateDifficulty(currentBlock[minter]);
+            if (newBlock->height % Config::difficultyAdjustmentInterval == 1) {
                 newBlock->lastEpochTime = currentBlock[minter]->time;
             }
             
             currentBlock[minter] = newBlock;
-            // cout << "Updated currentBlock[" << minter << "] to new block" << endl;
 
             blockQue.push(newBlock);
             if (blockQue.size() > 10000) {
                 block* deleteBlock = blockQue.front();blockQue.pop();
-                // cout << "Pushing block to blockStore, address: " << deleteBlock << ", height: " << deleteBlock->height << endl;
                 blockStore.push(deleteBlock);
             }
 
@@ -386,7 +438,7 @@ void simulation(int tie, const std::string& timestamp_dir) {
                 nextBlockTask = new task;
             }
 
-            double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[minter];
+            double baseTime = (double)Config::targetGenerationTime * (double)totalHashrate / (double)hashrate[minter];
             double adjustedTime = baseTime * newBlock->difficulty;
             
             double randomFactor = exp_dist(random_value);
@@ -433,7 +485,7 @@ void simulation(int tie, const std::string& timestamp_dir) {
             bool mainchainChanged = chooseMainchain(currentTask->propagatedBlock, currentBlock[to], from, to, tie);
             
             if (mainchainChanged) {
-                double latestDifficulty = calculateDifficulty(currentBlock[to], to);
+                double latestDifficulty = calculateDifficulty(currentBlock[to]);
                 
                 task* newMiningTask;
                 if (taskStore.size() > 0) {
@@ -442,7 +494,7 @@ void simulation(int tie, const std::string& timestamp_dir) {
                     newMiningTask = new task;
                 }
                 
-                double baseTime = (double)TARGET_GENERATION_TIME * (double)totalHashrate / (double)hashrate[to];
+                double baseTime = (double)Config::targetGenerationTime * (double)totalHashrate / (double)hashrate[to];
                 double adjustedTime = baseTime * latestDifficulty;
                 
                 double randomFactor = exp_dist(random_value);
