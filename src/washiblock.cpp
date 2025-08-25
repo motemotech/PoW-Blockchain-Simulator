@@ -219,7 +219,7 @@ double calculateDifficultyBTC(block* latestBlock) {
     }
 
     ll actualTimespan = latestBlock->time - latestBlock->lastEpochTime;
-    double ratio = (double)Config::targetGenerationTime / (double)actualTimespan;
+    double ratio = (double)BTC_TARGET_TIMESPAN / (double)actualTimespan;
     if (ratio > 4.0) ratio = 4.0;
     if (ratio < 0.25) ratio = 0.25;
 
