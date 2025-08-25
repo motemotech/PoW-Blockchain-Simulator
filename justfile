@@ -1,6 +1,6 @@
 # C++ Commands
 build:
-    g++ -std=c++11 -I include src/washiblock.cpp src/config.cpp -o ./output/washiblock
+    g++ -std=c++11 -O3 -I include src/washiblock.cpp src/config.cpp -o ./output/washiblock
 
 run-btc: build
     ./output/washiblock

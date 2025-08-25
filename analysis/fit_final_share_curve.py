@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 画像出力用データディレクトリを指定する変数（Noneの場合は最新ディレクトリを自動選択）
-DATA_DIR_OVERRIDE: Optional[str] = ""
+DATA_DIR_OVERRIDE: Optional[str] = "data/20250822_222025"
 
 def compute_theoretical_values(alpha_a: float, T: float, Delta: float) -> Tuple[float, float, float, float, float]:
     E = np.exp(- alpha_a * Delta / T)

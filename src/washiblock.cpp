@@ -52,6 +52,20 @@ double calculateDifficultyETH(block* latestBlock);  // Ethereum用難易度計�
 void openCsvFile(string filePath, string fileName, ofstream& csvFile);
 string createTimestampDirectory();
 
+// tieパラメータに基づいてルール名を取得する関数
+string getRuleName(int tie) {
+    switch (tie) {
+        case 0:
+            return "first_seen";
+        case 1:
+            return "random";
+        case 2:
+            return "last_generated";
+        default:
+            return "unknown";
+    }
+}
+
 // 乱数生成のためのシード値を生成する
 std::random_device seed_gen;
 // 乱数生成を行う
@@ -103,7 +117,8 @@ int main(int argc, char* argv[]) {
     // w_A, w_O, pi_A, pi_O の値を記録するCSVファイルを作成
     std::string blockchain_type = Config::getBlockchainTypeName();
     std::string difficulty_type = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
-    std::string w_and_pi_filename = timestamp_dir + "/" + blockchain_type + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_type + "_w_pi.csv";
+    std::string rule_name = getRuleName(Config::tieRule);
+    std::string w_and_pi_filename = timestamp_dir + "/" + blockchain_type + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + rule_name + "_" + difficulty_type + "_w_pi.csv";
     ofstream w_and_pi_file(w_and_pi_filename);
     
     if (!w_and_pi_file.is_open()) {
@@ -128,9 +143,9 @@ int main(int argc, char* argv[]) {
            totalHashrate += hashrate[i];
        }
        delay = current_delay;
-       cout << "--- Running simulation with delay: " << delay << " ---" << endl;
+       cout << "--- Running simulation with delay: " << delay << " (" << getRuleName(Config::tieRule) << " rule) ---" << endl;
        reset();
-       simulation(0, timestamp_dir);
+       simulation(Config::tieRule, timestamp_dir);
        
        // シミュレーション後にw_A, w_O, pi_A, pi_Oの値を計算してCSVに書き込み
        double pi_A = (double)startedByA / (double)END_ROUND;
@@ -367,7 +382,8 @@ void simulation(int tie, const std::string& timestamp_dir) {
     ofstream csvFile;
     std::string blockchain_prefix = Config::getBlockchainTypeName();
     std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
-    openCsvFile(timestamp_dir, blockchain_prefix + "_" + std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + difficulty_prefix + "_share", csvFile);
+    std::string rule_name = getRuleName(tie);
+    openCsvFile(timestamp_dir, blockchain_prefix + "_" + std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + std::to_string(END_ROUND) + "_" + rule_name + "_" + difficulty_prefix + "_share", csvFile);
     
 
     block* genesisBlock = createGenesisBlock();

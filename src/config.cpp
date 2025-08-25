@@ -9,6 +9,7 @@ namespace Config {
     std::vector<ll> delayValues = BTC_DEFAULT_DELAY_VALUES;
     ll difficultyAdjustmentInterval = BTC_DIFFICULTY_ADJUSTMENT_INTERVAL;
     ll targetGenerationTime = BTC_TARGET_GENERATION_TIME;
+    int tieRule = DEFAULT_TIE_RULE;  // tieルールの設定値
 
     void initializeBTCDefaults() {
         currentBlockchainType = BlockchainType::BITCOIN;
@@ -18,6 +19,7 @@ namespace Config {
         delayValues = BTC_DEFAULT_DELAY_VALUES;
         difficultyAdjustmentInterval = BTC_DIFFICULTY_ADJUSTMENT_INTERVAL;
         targetGenerationTime = BTC_TARGET_GENERATION_TIME;
+        tieRule = DEFAULT_TIE_RULE;
     }
 
     void initializeETHDefaults() {
@@ -28,6 +30,7 @@ namespace Config {
         delayValues = ETH_DEFAULT_DELAY_VALUES;
         difficultyAdjustmentInterval = ETH_DIFFICULTY_ADJUSTMENT_INTERVAL;
         targetGenerationTime = ETH_TARGET_GENERATION_TIME;
+        tieRule = DEFAULT_TIE_RULE;
     }
 
     void setBlockchainType(BlockchainType type) {
@@ -58,6 +61,7 @@ namespace Config {
         std::cout << "Difficulty Adjustment Interval: " << difficultyAdjustmentInterval << " blocks" << std::endl;
         std::cout << "Propagation Delay: " << propagationDelay << " ms" << std::endl;
         std::cout << "Number of Delay Values: " << delayValues.size() << std::endl;
+        std::cout << "Tie Rule: " << tieRule << " (" << (tieRule == 0 ? "first-seen" : tieRule == 1 ? "random" : "last-generated") << ")" << std::endl;
         std::cout << "============================" << std::endl;
     }
     
