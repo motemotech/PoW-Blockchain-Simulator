@@ -28,9 +28,9 @@ constexpr ll ETH_TARGET_TIMESPAN = ETH_DIFFICULTY_ADJUSTMENT_INTERVAL * ETH_TARG
 
 namespace Config {
     constexpr int DEFAULT_NODE_COUNT = 100;
-    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
+    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = false;
     constexpr ll DEFAULT_DELAY = BTC_TARGET_GENERATION_TIME / 10;
-    constexpr int DEFAULT_TIE_RULE = 0;  // デフォルトはfirst-seen rule
+    constexpr int DEFAULT_TIE_RULE = 2;  // デフォルトはfirst-seen rule
 
     // const std::vector<ll> BTC_DEFAULT_DELAY_VALUES = {
     //     TARGET_GENERATION_TIME / 10,
