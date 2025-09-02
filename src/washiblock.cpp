@@ -37,6 +37,10 @@ bool roundStarted[END_ROUND];
 int roundStartedBy[END_ROUND];
 bool highestHashrateNodeMinedBlocks[END_ROUND];
 
+// 各ノードのマイニングシェア追跡用配列（0番目から8番目まで）
+bool nodeMinedBlocks[9][END_ROUND];  // 各ノードが各ブロック高でマイニングしたかどうか
+ll nodeMinedCount[9];  // 各ノードがマイニングしたブロック数
+
 ll delay;
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
@@ -51,6 +55,10 @@ double calculateDifficultyBTC(block* latestBlock);  // Bitcoin用難易度計算
 double calculateDifficultyETH(block* latestBlock);  // Ethereum用難易度計算
 void openCsvFile(string filePath, string fileName, ofstream& csvFile);
 string createTimestampDirectory();
+
+// 各ノードのマイニングシェアCSVファイルを作成する関数
+void createNodeShareCsvFiles(const std::string& timestamp_dir, int tie);
+void writeNodeShareData(const std::string& timestamp_dir, int tie);
 
 // tieパラメータに基づいてルール名を取得する関数
 string getRuleName(int tie) {
@@ -132,11 +140,27 @@ int main(int argc, char* argv[]) {
     w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
 
     for (ll current_delay : Config::delayValues) {
-      hashrate[0] = Config::nodeCount - 1;
-    //   hashrate[0] = 10000;
-       for (int i = 1; i < Config::nodeCount; i++) {
-           hashrate[i] = 1;
-       }
+        // ===== ハッシュレート設定（コメントアウト可能） =====
+        // 設定1: 単一ノードが支配的な設定
+        // hashrate[0] = Config::nodeCount - 1;
+        // for (int i = 1; i < Config::nodeCount; i++) {
+        //     hashrate[i] = 1;
+        // }
+
+        // 設定2: 9つのノードが異なるハッシュレートを持つ設定
+        hashrate[0] = 16.534;
+        hashrate[1] = 12.56;
+        hashrate[2] = 11.288;
+        hashrate[3] = 2.226;
+        hashrate[4] = 1.272;
+        hashrate[5] = 0.636;
+        hashrate[6] = 0.318;
+        hashrate[7] = 0.318;
+        hashrate[8] = 0.159;
+        for (int i = 9; i < Config::nodeCount; i++) {
+            hashrate[i] = 0.01;
+        }
+        // ===== ハッシュレート設定終了 =====
 
        totalHashrate = 0;
        for (int i = 0; i < Config::nodeCount; i++) {
@@ -298,6 +322,12 @@ void finalizeBlocks(block* block1, int tie) {
                     startedByOAndMinedByO++;
                 }
                 
+                // 各ノード（0番目から8番目まで）のマイニングシェアを記録
+                if (finalizedBlock->minter >= 0 && finalizedBlock->minter < 9) {
+                    nodeMinedBlocks[finalizedBlock->minter][finalizedBlock->height] = true;
+                    nodeMinedCount[finalizedBlock->minter]++;
+                }
+                
                 finalizedBlock = finalizedBlock->prevBlock;
             }
         }
@@ -329,6 +359,12 @@ void finalizeBlocks(block* block1, int tie) {
                     startedByOAndMinedByO++;
                 }
                 
+                // 各ノード（0番目から8番目まで）のマイニングシェアを記録
+                if (finalizedBlock->minter >= 0 && finalizedBlock->minter < 9) {
+                    nodeMinedBlocks[finalizedBlock->minter][finalizedBlock->height] = true;
+                    nodeMinedCount[finalizedBlock->minter]++;
+                }
+                
                 finalizedBlock = finalizedBlock->prevBlock;
             }
         }
@@ -353,6 +389,14 @@ void reset() {
         highestHashrateNodeMinedBlocks[i] = false;
         roundStarted[i] = false;
         roundStartedBy[i] = -1;
+    }
+
+    // 各ノードのマイニングシェア追跡用変数を初期化
+    for (int node = 0; node < 9; node++) {
+        nodeMinedCount[node] = 0;
+        for (int i = 0; i < END_ROUND; i++) {
+            nodeMinedBlocks[node][i] = false;
+        }
     }
 
     return;
@@ -575,6 +619,10 @@ void simulation(int tie, const std::string& timestamp_dir) {
     cout << "r_A from data: " << (double)minedCount / (double)END_ROUND << endl;
 
     csvFile.close();
+    
+    // 各ノード（0番目から8番目まで）のマイニングシェアCSVファイルを作成
+    createNodeShareCsvFiles(timestamp_dir, tie);
+    writeNodeShareData(timestamp_dir, tie);
 }
 
 string createTimestampDirectory() {
@@ -618,5 +666,56 @@ void openCsvFile(string filePath, string fileName, ofstream& csvFile) {
         cerr << "[error] Failed to open CSV file: " << fullFileName << endl;
     } else {
         cout << "[info] Writing CSV to: " << fullFileName << endl;
+    }
+}
+
+// 各ノードのマイニングシェアCSVファイルを作成する関数
+void createNodeShareCsvFiles(const std::string& timestamp_dir, int tie) {
+    std::string blockchain_prefix = Config::getBlockchainTypeName();
+    std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
+    std::string rule_name = getRuleName(tie);
+    
+    // 各ノード（0番目から8番目まで）のCSVファイルを作成
+    for (int node = 0; node < 9; node++) {
+        std::string node_filename = "node_" + std::to_string(node) + "_" + blockchain_prefix + "_" + 
+                                   std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + 
+                                   std::to_string(END_ROUND) + "_" + rule_name + "_" + difficulty_prefix + "_share";
+        
+        ofstream node_csv_file;
+        openCsvFile(timestamp_dir, node_filename, node_csv_file);
+        
+        if (node_csv_file.is_open()) {
+            cout << "[info] Created node " << node << " share CSV file" << endl;
+            node_csv_file.close();
+        }
+    }
+}
+
+// 各ノードのマイニングシェアデータを書き込む関数
+void writeNodeShareData(const std::string& timestamp_dir, int tie) {
+    std::string blockchain_prefix = Config::getBlockchainTypeName();
+    std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "static" : "dynamic";
+    std::string rule_name = getRuleName(tie);
+    
+    // 各ノード（0番目から8番目まで）のデータを書き込み
+    for (int node = 0; node < 9; node++) {
+        std::string node_filename = "node_" + std::to_string(node) + "_" + blockchain_prefix + "_" + 
+                                   std::to_string(delay) + "_" + std::to_string(Config::nodeCount) + "_" + 
+                                   std::to_string(END_ROUND) + "_" + rule_name + "_" + difficulty_prefix + "_share";
+        
+        ofstream node_csv_file;
+        openCsvFile(timestamp_dir, node_filename, node_csv_file);
+        
+        if (node_csv_file.is_open()) {
+            ll nodeMinedCountSoFar = 0;
+            for (int i = 0; i < END_ROUND; i++) {
+                if (nodeMinedBlocks[node][i]) {
+                    nodeMinedCountSoFar++;
+                }
+                node_csv_file << i << ": " << (double)nodeMinedCountSoFar / (double)(i+1) << endl;
+            }
+            node_csv_file.close();
+            cout << "[info] Wrote node " << node << " share data: " << nodeMinedCount[node] << " blocks mined" << endl;
+        }
     }
 }
