@@ -20,7 +20,7 @@ ll currentRound;
 ll currentTime = 0;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
-ll hashrate[MAX_N]; // ノードのハッシュレート
+double hashrate[MAX_N]; // ノードのハッシュレート
 ll totalHashrate;
 ll numMain[3][MAX_N];
 ll mainLength;
@@ -148,18 +148,31 @@ int main(int argc, char* argv[]) {
         // }
 
         // 設定2: 9つのノードが異なるハッシュレートを持つ設定
+        double hashrateSum = 0;
         hashrate[0] = 16.534;
+        hashrateSum += hashrate[0];
         hashrate[1] = 12.56;
+        hashrateSum += hashrate[1];
         hashrate[2] = 11.288;
+        hashrateSum += hashrate[2];
         hashrate[3] = 2.226;
+        hashrateSum += hashrate[3];
         hashrate[4] = 1.272;
+        hashrateSum += hashrate[4];
         hashrate[5] = 0.636;
+        hashrateSum += hashrate[5];
         hashrate[6] = 0.318;
+        hashrateSum += hashrate[6];
         hashrate[7] = 0.318;
+        hashrateSum += hashrate[7];
         hashrate[8] = 0.159;
+        hashrateSum += hashrate[8];
+        cout << "hashrateSum: " << hashrateSum << endl;
+
         for (int i = 9; i < Config::nodeCount; i++) {
-            hashrate[i] = 0.01;
+            hashrate[i] = (100 - hashrateSum) / (Config::nodeCount - 9);
         }
+        cout << "hashrate[10]: " << hashrate[10] << endl;
         // ===== ハッシュレート設定終了 =====
 
        totalHashrate = 0;
@@ -694,7 +707,7 @@ void createNodeShareCsvFiles(const std::string& timestamp_dir, int tie) {
 // 各ノードのマイニングシェアデータを書き込む関数
 void writeNodeShareData(const std::string& timestamp_dir, int tie) {
     std::string blockchain_prefix = Config::getBlockchainTypeName();
-    std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "static" : "dynamic";
+    std::string difficulty_prefix = Config::dynamicDifficultyEnabled ? "dynamic" : "static";
     std::string rule_name = getRuleName(tie);
     
     // 各ノード（0番目から8番目まで）のデータを書き込み
