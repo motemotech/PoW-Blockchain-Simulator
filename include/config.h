@@ -27,8 +27,8 @@ constexpr ll BTC_TARGET_TIMESPAN = BTC_DIFFICULTY_ADJUSTMENT_INTERVAL * BTC_TARG
 constexpr ll ETH_TARGET_TIMESPAN = ETH_DIFFICULTY_ADJUSTMENT_INTERVAL * ETH_TARGET_GENERATION_TIME;
 
 namespace Config {
-    constexpr int DEFAULT_NODE_COUNT = 1000;
-    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
+    constexpr int DEFAULT_NODE_COUNT = 100;
+    constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = false;
     constexpr ll DEFAULT_DELAY = BTC_TARGET_GENERATION_TIME / 10;
     constexpr int DEFAULT_TIE_RULE = 0;  // デフォルトはfirst-seen rule
 
@@ -41,31 +41,31 @@ namespace Config {
     // };
 
     const std::vector<ll> BTC_DEFAULT_DELAY_VALUES = {
-        //BTC_TARGET_GENERATION_TIME / 10,
-        //BTC_TARGET_GENERATION_TIME / 9,
-        //BTC_TARGET_GENERATION_TIME / 8,
-        //BTC_TARGET_GENERATION_TIME / 7,
-        //BTC_TARGET_GENERATION_TIME / 6,
-        //BTC_TARGET_GENERATION_TIME / 5,
-        //BTC_TARGET_GENERATION_TIME / 4,
-        //BTC_TARGET_GENERATION_TIME / 3,
-        //BTC_TARGET_GENERATION_TIME / 2,
-        //BTC_TARGET_GENERATION_TIME,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 1.5),
-        //BTC_TARGET_GENERATION_TIME * 2,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 2.5),
-        //BTC_TARGET_GENERATION_TIME * 3,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 3.5),
-        //BTC_TARGET_GENERATION_TIME * 4,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 4.5),
-        //BTC_TARGET_GENERATION_TIME * 5,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 5.5),
-        //BTC_TARGET_GENERATION_TIME * 6,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 6.5),
-        //BTC_TARGET_GENERATION_TIME * 7,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 7.5),
-        //BTC_TARGET_GENERATION_TIME * 8,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 8.5),
+        BTC_TARGET_GENERATION_TIME / 10,
+        BTC_TARGET_GENERATION_TIME / 9,
+        BTC_TARGET_GENERATION_TIME / 8,
+        BTC_TARGET_GENERATION_TIME / 7,
+        BTC_TARGET_GENERATION_TIME / 6,
+        BTC_TARGET_GENERATION_TIME / 5,
+        BTC_TARGET_GENERATION_TIME / 4,
+        BTC_TARGET_GENERATION_TIME / 3,
+        BTC_TARGET_GENERATION_TIME / 2,
+        BTC_TARGET_GENERATION_TIME,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 1.5),
+        BTC_TARGET_GENERATION_TIME * 2,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 2.5),
+        BTC_TARGET_GENERATION_TIME * 3,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 3.5),
+        BTC_TARGET_GENERATION_TIME * 4,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 4.5),
+        BTC_TARGET_GENERATION_TIME * 5,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 5.5),
+        BTC_TARGET_GENERATION_TIME * 6,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 6.5),
+        BTC_TARGET_GENERATION_TIME * 7,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 7.5),
+        BTC_TARGET_GENERATION_TIME * 8,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 8.5),
         BTC_TARGET_GENERATION_TIME * 9,
         static_cast<ll>(BTC_TARGET_GENERATION_TIME * 9.5),
         BTC_TARGET_GENERATION_TIME * 10,

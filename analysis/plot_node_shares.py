@@ -28,7 +28,7 @@ def calculate_hashrate_ratios():
     
     ratios = {}
     for node in range(9):
-        ratios[node] = HASHRATES[node] / total_hashrate
+        ratios[node] = HASHRATES[node] / 100
         print("node", node, "ratio", ratios[node])
     
     return ratios
@@ -128,9 +128,9 @@ def plot_final_mining_shares(node_data, output_dir="analysis"):
     # グラフを作成
     plt.figure(figsize=(12, 8))
     
-    # 色の設定
+    # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22']
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22']  # Node 7を水色に変更
     
     for node in range(9):
         plt.plot(delta_t_ratios, node_shares[node], 
@@ -138,16 +138,23 @@ def plot_final_mining_shares(node_data, output_dir="analysis"):
                 color=colors[node], label=f'Node {node}')
     
     plt.xlabel('Δ/T', fontsize=14)
-    plt.ylabel('mining share (%)', fontsize=14)
-    plt.title('各ノードのマイニングシェア', fontsize=16)
+    plt.ylabel('mining share', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     
-    # 保存
-    output_path = os.path.join(output_dir, "final_mining_shares.png")
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Final mining shares plot saved to: {output_path}")
+    # 保存（PNG、SVG、PDF形式）
+    output_png = os.path.join(output_dir, "final_mining_shares.png")
+    output_svg = os.path.join(output_dir, "final_mining_shares.svg")
+    output_pdf = os.path.join(output_dir, "final_mining_shares.pdf")
+    
+    plt.savefig(output_png, dpi=300, bbox_inches='tight')
+    plt.savefig(output_svg, format='svg', bbox_inches='tight')
+    plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
+    
+    print(f"Final mining shares plot saved to: {output_png}")
+    print(f"Final mining shares plot saved to: {output_svg}")
+    print(f"Final mining shares plot saved to: {output_pdf}")
     plt.close()
 
 def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
@@ -171,11 +178,11 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
                 # mining share: 0-1の範囲（例：0.85 = 85%）
                 actual_share = node_data[delay][node]
                 print("node", node, "actual_share", actual_share)
-                # mining power: 0-1の範囲（ハッシュレート割合）
+                # hashrate ratio: 0-1の範囲（ハッシュレート割合）
                 expected_share = hashrate_ratios[node]
                 if expected_share > 0:
-                    # 効率性 = (実際のシェア / 期待されるシェア) * 100
-                    ratio = (actual_share / expected_share) * 100
+                    # 効率性 = (実際のシェア / 期待されるシェア)
+                    ratio = actual_share / expected_share
                 else:
                     ratio = 0
                 node_ratios[node].append(ratio)
@@ -185,29 +192,36 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
     # グラフを作成
     plt.figure(figsize=(12, 8))
     
-    # 色の設定
+    # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#7f7f7f', '#bcbd22']
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22']  # Node 7を水色に変更
     
     for node in range(9):
         plt.plot(delta_t_ratios, node_ratios[node], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
                 color=colors[node], label=f'Node {node}')
     
-    # 100%の基準線を追加
-    plt.axhline(y=100, color='black', linestyle='--', alpha=0.5, label='100% (期待値)')
+    # 1の基準線を追加（凡例には含めない）
+    plt.axhline(y=1, color='black', linestyle='--', alpha=0.5)
     
     plt.xlabel('Δ/T', fontsize=14)
-    plt.ylabel('mining share / mining power (%)', fontsize=14)
-    plt.title('各ノードのマイニング効率性', fontsize=16)
+    plt.ylabel('mining share / hashrate ratio', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     
-    # 保存
-    output_path = os.path.join(output_dir, "mining_share_efficiency.png")
-    plt.savefig(output_path, dpi=300, bbox_inches='tight')
-    print(f"Mining share efficiency plot saved to: {output_path}")
+    # 保存（PNG、SVG、PDF形式）
+    output_png = os.path.join(output_dir, "mining_share_efficiency.png")
+    output_svg = os.path.join(output_dir, "mining_share_efficiency.svg")
+    output_pdf = os.path.join(output_dir, "mining_share_efficiency.pdf")
+    
+    plt.savefig(output_png, dpi=300, bbox_inches='tight')
+    plt.savefig(output_svg, format='svg', bbox_inches='tight')
+    plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
+    
+    print(f"Mining share efficiency plot saved to: {output_png}")
+    print(f"Mining share efficiency plot saved to: {output_svg}")
+    print(f"Mining share efficiency plot saved to: {output_pdf}")
     plt.close()
 
 def main():
@@ -221,6 +235,7 @@ def main():
     # 最新のディレクトリを選択
     latest_dir = max(data_dirs, key=os.path.getctime)
     print(f"Using data directory: {latest_dir}")
+    # latest_dir = "data/20250903_001825"
     
     # データを収集
     node_data = collect_node_data(latest_dir)
