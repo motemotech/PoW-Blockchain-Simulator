@@ -8,7 +8,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # 画像出力用データディレクトリを指定する変数（Noneの場合は最新ディレクトリを自動選択）
-DATA_DIR_OVERRIDE: Optional[str] = "data/20250905_183027"
+DATA_DIR_OVERRIDE: Optional[str] = "data/20250905_194412"
 
 def compute_theoretical_values(alpha_a: float, T: float, Delta: float) -> Tuple[float, float, float, float, float]:
     E = np.exp(- alpha_a * Delta / T)
@@ -326,12 +326,12 @@ def main() -> None:
     T_fixed = target_generation_time
     # アルファ値の設定（ブロックチェーンタイプに応じて調整可能）
     if blockchain_type == "BTC":
-        alpha_fixed = 0.3  # Bitcoin用の既存の値
+        alpha_fixed = 0.1  # Bitcoin用の既存の値
     elif blockchain_type == "ETH":
         # alpha_fixed = 0.99019704921  # TODO: Ethereum用に適切な値を調整する必要があるかもしれません
-        alpha_fixed = 0.3
+        alpha_fixed = 0.1
     else:
-        alpha_fixed = 0.3  # デフォルト値
+        alpha_fixed = 0.1  # デフォルト値
 
     # Calculate theoretical values for pi/W data points
     r_A_theory_list = []
