@@ -21,7 +21,7 @@ ll currentTime = 0;
 block* currentBlock[MAX_N];
 task* currentMiningTask[MAX_N];
 double hashrate[MAX_N]; // ノードのハッシュレート
-ll totalHashrate;
+double totalHashrate;
 ll numMain[3][MAX_N];
 ll mainLength;
 int highestHashrateNode = 0;  // 最高ハッシュレートのノードID
@@ -143,9 +143,9 @@ int main(int argc, char* argv[]) {
         // ===== ハッシュレート設定（コメントアウト可能） =====
         
         // 設定A: node 0のハッシュレートを10%にする設定
-        hashrate[0] = 30.0;
+        hashrate[0] = 10.0;
         for (int i = 1; i < Config::nodeCount; i++) {
-            hashrate[i] = 70.0 / (Config::nodeCount - 1);
+            hashrate[i] = 90.0 / (Config::nodeCount - 1);
         }
         
         // 設定B: node 0のハッシュレートを50%にする設定
@@ -192,6 +192,8 @@ int main(int argc, char* argv[]) {
        for (int i = 0; i < Config::nodeCount; i++) {
            totalHashrate += hashrate[i];
        }
+       cout << "totalHashrate: " << totalHashrate << endl;
+       cout << "hashrate[0]: " << hashrate[0]/totalHashrate << endl;
        delay = current_delay;
        cout << "--- Running simulation with delay: " << delay << " (" << getRuleName(Config::tieRule) << " rule) ---" << endl;
        reset();
