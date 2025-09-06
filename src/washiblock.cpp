@@ -143,9 +143,9 @@ int main(int argc, char* argv[]) {
         // ===== ハッシュレート設定（コメントアウト可能） =====
         
         // 設定A: node 0のハッシュレートを10%にする設定
-        hashrate[0] = 70.0;
+        hashrate[0] = 90.0;
         for (int i = 1; i < Config::nodeCount; i++) {
-            hashrate[i] = 30.0 / (Config::nodeCount - 1);
+            hashrate[i] = 10.0 / (Config::nodeCount - 1);
         }
         
         // 設定B: node 0のハッシュレートを50%にする設定
