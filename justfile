@@ -1,13 +1,15 @@
 # C++ Commands
 build:
-    g++ -std=c++11 -O3 -I include src/washiblock.cpp src/config.cpp -o ./output/washiblock
+    g++ -std=c++11 -O3 -I include src/blockchain-simulator.cpp src/config.cpp -o ./output/blockchain-simulator
 
 run-btc: build
-    ./output/washiblock
+    ./output/blockchain-simulator
 
-run-eth: build
-    ./output/washiblock ETH
+run-btc-dynamic: build
+    ./output/blockchain-simulator
 
+run-eth-dynamic: build
+    ./output/blockchain-simulator ETH
 # Python Environment
 venv:
     @echo "To activate virtual environment, run:"
