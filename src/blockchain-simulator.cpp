@@ -305,9 +305,9 @@ double calculateDifficultyETH(block* latestBlock) {
 
     double difficultyAdjustment = latestBlock->difficulty / (double)2048 * adjustmentFactor;
 
-    double uncleAdjustment = 0.0;
+    // double uncleAdjustment = 0.0;
 
-    double newDifficulty = latestBlock->difficulty + difficultyAdjustment + uncleAdjustment;
+    double newDifficulty = latestBlock->difficulty + difficultyAdjustment; //  + uncleAdjustment;
 
     if (newDifficulty < 0.1) {
         newDifficulty = 0.1;  // 最小値を0.1に修正
