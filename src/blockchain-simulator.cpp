@@ -313,6 +313,8 @@ double calculateDifficultyETH(block* latestBlock) {
         newDifficulty = 0.1;  // 最小値を0.1に修正
     }
 
+    cout << "newDifficulty: " << newDifficulty << endl;
+
     return newDifficulty;
 }
 
