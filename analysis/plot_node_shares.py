@@ -4,6 +4,8 @@ import glob
 import os
 import numpy as np
 from pathlib import Path
+from datetime import datetime
+from typing import Tuple
 
 # ハッシュレート設定（washiblock.cppと同じ値）
 HASHRATES = {
@@ -20,6 +22,26 @@ HASHRATES = {
 
 # 9番目以降のノードのハッシュレート
 OTHER_NODES_HASHRATE = 0.6
+
+def compute_theoretical_values(alpha_a: float, T: float, Delta: float) -> Tuple[float, float, float, float, float]:
+    """理論式による値を計算"""
+    E = np.exp(- alpha_a * Delta / T)
+    numerator = (
+        alpha_a * E
+        + Delta * alpha_a * alpha_a * E / T
+        + 1 - E
+        - Delta * alpha_a * E / T
+    )
+    denominator = 1 + Delta * alpha_a * alpha_a * E / T - Delta * alpha_a * E / T
+    pi_A = numerator / denominator
+    pi_O = 1 - pi_A
+    W_A = 1.0
+    W_1 = Delta * alpha_a * E / T
+    W_2 = 1 - E - Delta * alpha_a * E / T
+    S = (alpha_a - alpha_a * W_2 + W_2) / (1 + alpha_a * W_1 - W_1)
+    W_O = W_1 * S + W_2
+    r_A = pi_A * W_A + (1 - pi_A) * W_O
+    return r_A, pi_A, pi_O, W_A, W_O
 
 def calculate_hashrate_ratios():
     """各ノードのハッシュレート割合を計算"""
@@ -107,7 +129,7 @@ def collect_node_data(data_dir):
     return node_files
 
 def plot_final_mining_shares(node_data, output_dir="analysis"):
-    """各ノードの最終マイニングシェアをプロット"""
+    """各ノードの最終マイニングシェアをプロット（理論曲線付き）"""
     # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
     BTC_TARGET_GENERATION_TIME = 600000
     
@@ -138,7 +160,7 @@ def plot_final_mining_shares(node_data, output_dir="analysis"):
                 color=colors[node], label=f'Node {node}')
     
     plt.xlabel('Δ/T', fontsize=14)
-    plt.ylabel('mining share', fontsize=14)
+    plt.ylabel('rᵢ (mining share)', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
@@ -157,8 +179,79 @@ def plot_final_mining_shares(node_data, output_dir="analysis"):
     print(f"Final mining shares plot saved to: {output_pdf}")
     plt.close()
 
+def plot_node0_with_theory(node_data, output_dir="analysis"):
+    """Node 0の最終マイニングシェアと理論値を比較プロット"""
+    # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
+    BTC_TARGET_GENERATION_TIME = 600000
+    
+    # データを整理
+    delays = sorted(node_data.keys())
+    delta_t_ratios = [delay / BTC_TARGET_GENERATION_TIME for delay in delays]
+    
+    # Node 0のデータを準備
+    node0_shares = []
+    for delay in delays:
+        if 0 in node_data[delay]:
+            node0_shares.append(node_data[delay][0])
+        else:
+            node0_shares.append(0)
+    
+    # グラフを作成
+    plt.figure(figsize=(12, 8))
+    
+    # Node 0の実験データをプロット
+    plt.plot(delta_t_ratios, node0_shares, 
+            marker='o', linestyle='-', linewidth=2, markersize=8,
+            color='#1f77b4', label='Node 0 Experimental Value')
+    
+    # 理論曲線用の滑らかなデータ点を生成
+    if delays:
+        delta_min = min(delays)
+        delta_max = max(delays)
+        delta_smooth = np.linspace(delta_min, delta_max, 200)
+        delta_t_smooth = [delta / BTC_TARGET_GENERATION_TIME for delta in delta_smooth]
+        
+        # Node 0のハッシュレート割合を計算
+        hashrate_ratios = calculate_hashrate_ratios()
+        node0_hashrate_ratio = hashrate_ratios[0]
+        
+        # Node 0の理論曲線を計算（αはNode 0のハッシュレート割合を使用）
+        alpha_node0 = node0_hashrate_ratio  # Node 0のハッシュレート割合をαとして使用
+        
+        # 理論曲線を計算
+        theory_shares = []
+        for delta in delta_smooth:
+            r_A, _, _, _, _ = compute_theoretical_values(alpha_node0, BTC_TARGET_GENERATION_TIME, delta)
+            # r_A自体がNode 0（攻撃者）のマイニングシェア
+            theory_shares.append(r_A)
+        
+        # 理論曲線をプロット（破線で表示）
+        plt.plot(delta_t_smooth, theory_shares, 
+                linestyle='--', linewidth=2.5, alpha=0.8,
+                color='red', label=f'Theoretical Value for α₀={alpha_node0:.5f}')
+    
+    plt.xlabel('Δ/T', fontsize=14)
+    plt.ylabel('r₀ (mining share)', fontsize=14)
+    plt.grid(True, alpha=0.3)
+    plt.legend(fontsize=12)
+    plt.tight_layout()
+    
+    # 保存（PNG、SVG、PDF形式）
+    output_png = os.path.join(output_dir, "node0_with_theory.png")
+    output_svg = os.path.join(output_dir, "node0_with_theory.svg")
+    output_pdf = os.path.join(output_dir, "node0_with_theory.pdf")
+    
+    plt.savefig(output_png, dpi=300, bbox_inches='tight')
+    plt.savefig(output_svg, format='svg', bbox_inches='tight')
+    plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
+    
+    print(f"Node 0 with theory plot saved to: {output_png}")
+    print(f"Node 0 with theory plot saved to: {output_svg}")
+    print(f"Node 0 with theory plot saved to: {output_pdf}")
+    plt.close()
+
 def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
-    """実際のマイニングシェアとハッシュレート割合の比率をプロット"""
+    """実際のマイニングシェアとハッシュレート割合の比率をプロット（理論曲線付き）"""
     # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
     BTC_TARGET_GENERATION_TIME = 600000
     
@@ -205,7 +298,7 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
     plt.axhline(y=1, color='black', linestyle='--', alpha=0.5)
     
     plt.xlabel('Δ/T', fontsize=14)
-    plt.ylabel('mining share / hashrate ratio', fontsize=14)
+    plt.ylabel('rᵢ (mining share) / αᵢ (hashrate ratio)', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
@@ -235,7 +328,7 @@ def main():
     # 最新のディレクトリを選択
     latest_dir = max(data_dirs, key=os.path.getctime)
     print(f"Using data directory: {latest_dir}")
-    # latest_dir = "data/20250903_001825"
+    latest_dir = "data/real-hashrate-dist"
     
     # データを収集
     node_data = collect_node_data(latest_dir)
@@ -246,14 +339,19 @@ def main():
     
     print(f"Found data for {len(node_data)} different delay values")
     
-    # 出力ディレクトリを作成
-    output_dir = "analysis"
+    # 出力ディレクトリを作成（タイムスタンプ付き）
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    output_dir = f"analysis/node_shares_{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
+    print(f"Output directory: {output_dir}")
     
     # グラフ1: 最終マイニングシェア
     plot_final_mining_shares(node_data, output_dir)
     
-    # グラフ2: マイニングシェア効率
+    # グラフ2: Node 0と理論値の比較
+    plot_node0_with_theory(node_data, output_dir)
+    
+    # グラフ3: マイニングシェア効率
     plot_share_vs_hashrate_ratio(node_data, output_dir)
     
     # ハッシュレート割合を表示
@@ -261,6 +359,8 @@ def main():
     print("\nハッシュレート割合:")
     for node in range(9):
         print(f"Node {node}: {hashrate_ratios[node]:.4f} ({hashrate_ratios[node]*100:.2f}%)")
+    
+    print(f"\nAll plots saved to directory: {output_dir}")
 
 if __name__ == "__main__":
     main()

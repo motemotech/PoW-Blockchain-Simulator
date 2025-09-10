@@ -10,8 +10,8 @@ import matplotlib.pyplot as plt
 # 画像出力用データディレクトリを指定する変数（Noneの場合は最新ディレクトリを自動選択）
 DATA_DIRS: Dict[str, Optional[str]] = {
     "no_adjustment": "data/theory-alpha-0.5-1000",  # 難易度調整なし
-    "btc_adjustment": "data/btc_2016",  # BTCの難易度調整
-    "eth_adjustment": "data/20250910_113213",  # ETHの難易度調整
+    "btc_adjustment": "data/compare-btc-alpha-0.5-1000",  # BTCの難易度調整
+    "eth_adjustment": "data/compare-eth-alpha-0.5-1000",  # ETHの難易度調整
 }
 
 # プロット用の色とラベル設定
