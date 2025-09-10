@@ -149,10 +149,10 @@ int main(int argc, char* argv[]) {
         // ===== ハッシュレート設定（コメントアウト可能） =====
         
         // 設定A: node 0のハッシュレートを10%にする設定
-        hashrate[0] = 50.0;
-        for (int i = 1; i < Config::nodeCount; i++) {
-            hashrate[i] = 50.0 / (Config::nodeCount - 1);
-        }
+        // hashrate[0] = 50.0;
+        // for (int i = 1; i < Config::nodeCount; i++) {
+        //     hashrate[i] = 50.0 / (Config::nodeCount - 1);
+        // }
         
         // 設定B: node 0のハッシュレートを50%にする設定
         // hashrate[0] = 50.0;
@@ -167,30 +167,30 @@ int main(int argc, char* argv[]) {
         // }
 
         // 設定D: 9つのノードが異なるハッシュレートを持つ設定（実データベース）
-        // double hashrateSum = 0;
-        // hashrate[0] = 16.534;
-        // hashrateSum += hashrate[0];
-        // hashrate[1] = 12.56;
-        // hashrateSum += hashrate[1];
-        // hashrate[2] = 11.288;
-        // hashrateSum += hashrate[2];
-        // hashrate[3] = 2.226;
-        // hashrateSum += hashrate[3];
-        // hashrate[4] = 1.272;
-        // hashrateSum += hashrate[4];
-        // hashrate[5] = 0.636;
-        // hashrateSum += hashrate[5];
-        // hashrate[6] = 0.318;
-        // hashrateSum += hashrate[6];
-        // hashrate[7] = 0.318;
-        // hashrateSum += hashrate[7];
-        // hashrate[8] = 0.159;
-        // hashrateSum += hashrate[8];
-        // cout << "hashrateSum: " << hashrateSum << endl;
-        // for (int i = 9; i < Config::nodeCount; i++) {
-        //     hashrate[i] = (100 - hashrateSum) / (Config::nodeCount - 9);
-        // }
-        // cout << "hashrate[10]: " << hashrate[10] << endl;
+        double hashrateSum = 0;
+        hashrate[0] = 16.534;
+        hashrateSum += hashrate[0];
+        hashrate[1] = 12.56;
+        hashrateSum += hashrate[1];
+        hashrate[2] = 11.288;
+        hashrateSum += hashrate[2];
+        hashrate[3] = 2.226;
+        hashrateSum += hashrate[3];
+        hashrate[4] = 1.272;
+        hashrateSum += hashrate[4];
+        hashrate[5] = 0.636;
+        hashrateSum += hashrate[5];
+        hashrate[6] = 0.318;
+        hashrateSum += hashrate[6];
+        hashrate[7] = 0.318;
+        hashrateSum += hashrate[7];
+        hashrate[8] = 0.159;
+        hashrateSum += hashrate[8];
+        cout << "hashrateSum: " << hashrateSum << endl;
+        for (int i = 9; i < Config::nodeCount; i++) {
+            hashrate[i] = (100 - hashrateSum) / (Config::nodeCount - 9);
+        }
+        cout << "hashrate[10]: " << hashrate[10] << endl;
         
         // ===== ハッシュレート設定終了 =====
 
