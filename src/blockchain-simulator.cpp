@@ -12,6 +12,8 @@
 #include <functional>
 #include <chrono>
 #include <sstream>
+#include <map>
+#include <vector>
 #include "../include/config.h"
 using namespace std;
 
@@ -41,6 +43,9 @@ bool highestHashrateNodeMinedBlocks[END_ROUND];
 bool nodeMinedBlocks[9][END_ROUND];  // 各ノードが各ブロック高でマイニングしたかどうか
 ll nodeMinedCount[9];  // 各ノードがマイニングしたブロック数
 
+// uncle block検出用のデータ構造
+map<ll, vector<block*>> blocksByHeight;  // 高さ別のブロック一覧
+
 ll delay;
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
@@ -53,6 +58,7 @@ ll getPropagationTime(int i, int j);
 double calculateDifficulty(block* latestBlock);  // ブロックチェーンタイプに応じた難易度計算関数
 double calculateDifficultyBTC(block* latestBlock);  // Bitcoin用難易度計算
 double calculateDifficultyETH(block* latestBlock);  // Ethereum用難易度計算
+bool hasUncleBlock(block* currentBlock);  // uncle block検出関数
 void openCsvFile(string filePath, string fileName, ofstream& csvFile);
 string createTimestampDirectory();
 
@@ -257,6 +263,7 @@ double calculateDifficulty(block* latestBlock) {
     }
 }
 
+// stale block数は0で計算
 double calculateDifficultyBTC(block* latestBlock) {
     if (latestBlock == nullptr || latestBlock->height == 0) {
         return 1.0;
@@ -281,10 +288,13 @@ double calculateDifficultyBTC(block* latestBlock) {
     } else {
         newDifficulty = 1.0;
     }
+
+    // cout << "newDifficulty: " << newDifficulty << endl;
     
     return newDifficulty;
 }
 
+// uncle blockがあるかどうかのみで判断しているので、この難易度調整において考慮しているstale block数は1になる。
 double calculateDifficultyETH(block* latestBlock) {
     if (latestBlock == nullptr || latestBlock->height == 0) {
         return 1.0;
@@ -294,28 +304,58 @@ double calculateDifficultyETH(block* latestBlock) {
         return latestBlock->difficulty;
     }
 
-    block* grandParentBlock = latestBlock->prevBlock;
+    block* parentBlock = latestBlock->prevBlock;
+    
+    ll timeDiff = latestBlock->time - parentBlock->time;
+    
+    ll timeDiffSeconds = timeDiff / 1000;
+    
+    ll adjustmentFactor = std::max(1LL - timeDiffSeconds / 10LL, -99LL);
 
-    ll timeDiff = latestBlock->time - grandParentBlock->time;
+    double difficultyAdjustment = latestBlock->difficulty / 2048.0 * (double)adjustmentFactor;
 
-    double adjustmentFactor = 1.0 - (double)timeDiff / (double)Config::targetGenerationTime;
+    // 実際のuncle block検出を使用
+    bool uncleExists = hasUncleBlock(latestBlock);
+    double uncleAdjustment = uncleExists ? 1.0 : 0.0;
 
-    if (adjustmentFactor < -99.0) adjustmentFactor = -99.0;
-    if (adjustmentFactor > 1.0) adjustmentFactor = 1.0;
-
-    double difficultyAdjustment = latestBlock->difficulty / (double)2048 * adjustmentFactor;
-
-    // double uncleAdjustment = 0.0;
-
-    double newDifficulty = latestBlock->difficulty + difficultyAdjustment; //  + uncleAdjustment;
+    double newDifficulty = latestBlock->difficulty + difficultyAdjustment + uncleAdjustment;
 
     if (newDifficulty < 0.1) {
         newDifficulty = 0.1;  // 最小値を0.1に修正
     }
 
-    cout << "newDifficulty: " << newDifficulty << endl;
+    // cout << "newDifficulty: " << newDifficulty << endl;
 
     return newDifficulty;
+}
+
+// uncle block検出関数
+bool hasUncleBlock(block* currentBlock) {
+    if (currentBlock == nullptr || currentBlock->prevBlock == nullptr) {
+        return false;
+    }
+    
+    ll parentHeight = currentBlock->prevBlock->height;
+    
+    // 親ブロックと同じ高さで、異なるブロックが存在するかチェック
+    if (blocksByHeight.find(parentHeight) != blocksByHeight.end()) {
+        const vector<block*>& blocksAtHeight = blocksByHeight[parentHeight];
+        
+        // 同じ高さに2つ以上のブロックがある場合、uncle blockが存在する
+        if (blocksAtHeight.size() > 1) {
+            // さらに詳細な条件: 同じ親の親を持つブロックが複数存在するかチェック
+            for (const block* otherBlock : blocksAtHeight) {
+                if (otherBlock != currentBlock->prevBlock && 
+                    otherBlock->prevBlock != nullptr &&
+                    currentBlock->prevBlock->prevBlock != nullptr &&
+                    otherBlock->prevBlock == currentBlock->prevBlock->prevBlock) {
+                    return true;  // uncle blockが存在
+                }
+            }
+        }
+    }
+    
+    return false;
 }
 
 void finalizeBlocks(block* block1, int tie) {
@@ -429,6 +469,9 @@ void reset() {
         }
     }
 
+    // uncle block検出用のデータ構造をクリア
+    blocksByHeight.clear();
+
     return;
 }
 
@@ -514,6 +557,9 @@ void simulation(int tie, const std::string& timestamp_dir) {
             }
             
             currentBlock[minter] = newBlock;
+
+            // uncle block検出用にブロックを記録
+            blocksByHeight[newBlock->height].push_back(newBlock);
 
             blockQue.push(newBlock);
             if (blockQue.size() > 10000) {

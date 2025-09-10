@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 DATA_DIRS: Dict[str, Optional[str]] = {
     "no_adjustment": "data/theory-alpha-0.5-1000",  # 難易度調整なし
     "btc_adjustment": "data/compare-btc-alpha-0.5-1000",  # BTCの難易度調整
-    "eth_adjustment": "data/compare-eth-alpha-0.5-1000",  # ETHの難易度調整
+    "eth_adjustment": "data/20250909_071930",  # ETHの難易度調整
 }
 
 # プロット用の色とラベル設定
