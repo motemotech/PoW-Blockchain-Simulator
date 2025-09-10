@@ -24,7 +24,7 @@ struct block {
         minter(-1),
         time(0),
         rand(0),
-        difficulty(1.0),
+        difficulty(131.072),
         lastEpochTime(0),
         finalized(false) {}
 };

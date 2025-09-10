@@ -316,7 +316,9 @@ double calculateDifficultyETH(block* latestBlock) {
 
     // 実際のuncle block検出を使用
     bool uncleExists = hasUncleBlock(latestBlock);
-    double uncleAdjustment = uncleExists ? 1.0 : 0.0;
+    // uncle adjustmentを現在の難易度に比例させる（実際のEthereumでは難易度に対して相対的に小さな値）
+    // 実際のEthereumでは約 difficulty/2048 程度の影響なので、同様の比率を適用
+    double uncleAdjustment = uncleExists ? (latestBlock->difficulty / 2048.0) : 0.0;
 
     double newDifficulty = latestBlock->difficulty + difficultyAdjustment + uncleAdjustment;
 
