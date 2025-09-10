@@ -95,11 +95,11 @@ namespace Config {
         //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 6.5),
         //ETH_TARGET_GENERATION_TIME * 7,
         //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 7.5),
-        //ETH_TARGET_GENERATION_TIME * 8,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 8.5),
-        ETH_TARGET_GENERATION_TIME * 9,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 9.5),
-        ETH_TARGET_GENERATION_TIME * 10,
+        ETH_TARGET_GENERATION_TIME * 8,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 8.5),
+        //ETH_TARGET_GENERATION_TIME * 9,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 9.5),
+        //ETH_TARGET_GENERATION_TIME * 10,
     };
 
     extern BlockchainType currentBlockchainType;
