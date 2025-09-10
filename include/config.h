@@ -19,7 +19,7 @@ constexpr ll BTC_TARGET_GENERATION_TIME = 600000;
 constexpr ll ETH_TARGET_GENERATION_TIME = 15000;
 
 // ブロックの難易度調整間隔
-constexpr ll BTC_DIFFICULTY_ADJUSTMENT_INTERVAL = 10;
+constexpr ll BTC_DIFFICULTY_ADJUSTMENT_INTERVAL = 2016;
 constexpr ll ETH_DIFFICULTY_ADJUSTMENT_INTERVAL = 1;
 
 // ブロックの難易度調整間隔のブロック数
@@ -27,7 +27,7 @@ constexpr ll BTC_TARGET_TIMESPAN = BTC_DIFFICULTY_ADJUSTMENT_INTERVAL * BTC_TARG
 constexpr ll ETH_TARGET_TIMESPAN = ETH_DIFFICULTY_ADJUSTMENT_INTERVAL * ETH_TARGET_GENERATION_TIME;
 
 namespace Config {
-    constexpr int DEFAULT_NODE_COUNT = 100;
+    constexpr int DEFAULT_NODE_COUNT = 1000;
     constexpr bool DEFAULT_DYNAMIC_DIFFICULTY = true;
     constexpr ll DEFAULT_DELAY = BTC_TARGET_GENERATION_TIME / 10;
     constexpr int DEFAULT_TIE_RULE = 0;  // デフォルトはfirst-seen rule
@@ -72,30 +72,30 @@ namespace Config {
     };
 
     const std::vector<ll> ETH_DEFAULT_DELAY_VALUES = {
-        ETH_TARGET_GENERATION_TIME / 10,
-        ETH_TARGET_GENERATION_TIME / 9,
-        ETH_TARGET_GENERATION_TIME / 8,
-        ETH_TARGET_GENERATION_TIME / 7,
-        ETH_TARGET_GENERATION_TIME / 6,
-        ETH_TARGET_GENERATION_TIME / 5,
-        ETH_TARGET_GENERATION_TIME / 4,
-        ETH_TARGET_GENERATION_TIME / 3,
-        ETH_TARGET_GENERATION_TIME / 2,
-        ETH_TARGET_GENERATION_TIME,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 1.5),
-        ETH_TARGET_GENERATION_TIME * 2,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 2.5),
-        ETH_TARGET_GENERATION_TIME * 3,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 3.5),
-        ETH_TARGET_GENERATION_TIME * 4,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 4.5),
-        ETH_TARGET_GENERATION_TIME * 5,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 5.5),
-        ETH_TARGET_GENERATION_TIME * 6,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 6.5),
-        ETH_TARGET_GENERATION_TIME * 7,
-        static_cast<ll>(ETH_TARGET_GENERATION_TIME * 7.5),
-        ETH_TARGET_GENERATION_TIME * 8,
+        //ETH_TARGET_GENERATION_TIME / 10,
+        //ETH_TARGET_GENERATION_TIME / 9,
+        //ETH_TARGET_GENERATION_TIME / 8,
+        //ETH_TARGET_GENERATION_TIME / 7,
+        //ETH_TARGET_GENERATION_TIME / 6,
+        //ETH_TARGET_GENERATION_TIME / 5,
+        //ETH_TARGET_GENERATION_TIME / 4,
+        //ETH_TARGET_GENERATION_TIME / 3,
+        //ETH_TARGET_GENERATION_TIME / 2,
+        //ETH_TARGET_GENERATION_TIME,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 1.5),
+        //ETH_TARGET_GENERATION_TIME * 2,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 2.5),
+        //ETH_TARGET_GENERATION_TIME * 3,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 3.5),
+        //ETH_TARGET_GENERATION_TIME * 4,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 4.5),
+        //ETH_TARGET_GENERATION_TIME * 5,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 5.5),
+        //ETH_TARGET_GENERATION_TIME * 6,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 6.5),
+        //ETH_TARGET_GENERATION_TIME * 7,
+        //static_cast<ll>(ETH_TARGET_GENERATION_TIME * 7.5),
+        //ETH_TARGET_GENERATION_TIME * 8,
         static_cast<ll>(ETH_TARGET_GENERATION_TIME * 8.5),
         ETH_TARGET_GENERATION_TIME * 9,
         static_cast<ll>(ETH_TARGET_GENERATION_TIME * 9.5),
