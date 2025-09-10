@@ -19,7 +19,7 @@ constexpr ll BTC_TARGET_GENERATION_TIME = 600000;
 constexpr ll ETH_TARGET_GENERATION_TIME = 15000;
 
 // ブロックの難易度調整間隔
-constexpr ll BTC_DIFFICULTY_ADJUSTMENT_INTERVAL = 2016;
+constexpr ll BTC_DIFFICULTY_ADJUSTMENT_INTERVAL = 10;
 constexpr ll ETH_DIFFICULTY_ADJUSTMENT_INTERVAL = 1;
 
 // ブロックの難易度調整間隔のブロック数
