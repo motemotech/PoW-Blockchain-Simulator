@@ -1,0 +1,122 @@
+[
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 271791429330586440000,
+        "share": 0.279383,
+        "poolName": "Foundry USA"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 149016680219183580000,
+        "share": 0.153179,
+        "poolName": "AntPool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 120900325460847080000,
+        "share": 0.124277,
+        "poolName": "ViaBTC"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 106842148081678800000,
+        "share": 0.109827,
+        "poolName": "F2Pool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 82474640624453810000,
+        "share": 0.0847784,
+        "poolName": "SpiderPool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 44986167613338440000,
+        "share": 0.0462428,
+        "poolName": "Luxor"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 39362896661671140000,
+        "share": 0.0404624,
+        "poolName": "MARA Pool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 37488473011115370000,
+        "share": 0.0385356,
+        "poolName": "SECPOOL"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 23430295631947110000,
+        "share": 0.0240848,
+        "poolName": "SBI Crypto"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 18744236505557684000,
+        "share": 0.0192678,
+        "poolName": "Braiins Pool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 16869812855001915000,
+        "share": 0.017341,
+        "poolName": "Binance Pool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 16869812855001915000,
+        "share": 0.017341,
+        "poolName": "OCEAN"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 9372118252778842000,
+        "share": 0.00963391,
+        "poolName": "Unknown"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 6560482776945190000,
+        "share": 0.00674374,
+        "poolName": "WhitePool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 6560482776945190000,
+        "share": 0.00674374,
+        "poolName": "Mining Squared"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 5623270951667304000,
+        "share": 0.00578035,
+        "poolName": "luckyPool"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 5623270951667304000,
+        "share": 0.00578035,
+        "poolName": "BTC.com"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 4686059126389421000,
+        "share": 0.00481696,
+        "poolName": "Poolin"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 1874423650555768800,
+        "share": 0.00192678,
+        "poolName": "Solo CK"
+    },
+    {
+        "timestamp": 1757289600,
+        "avgHashrate": 937211825277884400,
+        "share": 0.000963391,
+        "poolName": "ULTIMUSPOOL"
+    }
+]

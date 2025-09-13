@@ -46,6 +46,10 @@ ll nodeMinedCount[9];  // 各ノードがマイニングしたブロック数
 // uncle block検出用のデータ構造
 map<ll, vector<block*>> blocksByHeight;  // 高さ別のブロック一覧
 
+// ブロック生成間隔記録用のデータ構造
+vector<ll> blockGenerationIntervals;  // 各ブロックの生成間隔（ブロック生成イベント間の時間差）
+ll lastBlockGenerationTime;  // 最後にブロックが生成された時刻
+
 ll delay;
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
@@ -143,7 +147,7 @@ int main(int argc, char* argv[]) {
     }
     
     // CSVファイルのヘッダーを書き込み
-    w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O" << endl;
+    w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O,avg_block_interval" << endl;
 
     for (ll current_delay : Config::delayValues) {
         // ===== ハッシュレート設定（コメントアウト可能） =====
@@ -168,26 +172,28 @@ int main(int argc, char* argv[]) {
 
         // 設定D: 9つのノードが異なるハッシュレートを持つ設定（実データベース）
         double hashrateSum = 0;
-        hashrate[0] = 16.534;
+        hashrate[0] = 27.9383;
         hashrateSum += hashrate[0];
-        hashrate[1] = 12.56;
+        hashrate[1] = 15.3179;
         hashrateSum += hashrate[1];
-        hashrate[2] = 11.288;
+        hashrate[2] = 12.4277;
         hashrateSum += hashrate[2];
-        hashrate[3] = 2.226;
+        hashrate[3] = 10.9827;
         hashrateSum += hashrate[3];
-        hashrate[4] = 1.272;
+        hashrate[4] = 8.47784;
         hashrateSum += hashrate[4];
-        hashrate[5] = 0.636;
+        hashrate[5] = 4.62428;
         hashrateSum += hashrate[5];
-        hashrate[6] = 0.318;
+        hashrate[6] = 4.04624;
         hashrateSum += hashrate[6];
-        hashrate[7] = 0.318;
+        hashrate[7] = 3.85356;
         hashrateSum += hashrate[7];
-        hashrate[8] = 0.159;
+        hashrate[8] = 2.40848;
         hashrateSum += hashrate[8];
+        hashrate[9] = 1.92678;
+        hashrateSum += hashrate[9];
         cout << "hashrateSum: " << hashrateSum << endl;
-        for (int i = 9; i < Config::nodeCount; i++) {
+        for (int i = 10; i < Config::nodeCount; i++) {
             hashrate[i] = (100 - hashrateSum) / (Config::nodeCount - 9);
         }
         cout << "hashrate[10]: " << hashrate[10] << endl;
@@ -211,9 +217,20 @@ int main(int argc, char* argv[]) {
        double w_A = (startedByA > 0) ? (double)startedByAAndMinedByA / (double)startedByA : 0.0;
        double w_O = (startedByO > 0) ? (double)startedByOAndMinedByA / (double)startedByO : 0.0;
        
-       w_and_pi_file << delay << "," << pi_A << "," << pi_O << "," << w_A << "," << w_O << endl;
+       // ブロック生成間隔の平均値を計算
+       double avgBlockInterval = 0.0;
+       if (!blockGenerationIntervals.empty()) {
+           ll totalInterval = 0;
+           for (ll interval : blockGenerationIntervals) {
+               totalInterval += interval;
+           }
+           avgBlockInterval = (double)totalInterval / (double)blockGenerationIntervals.size();
+       }
+       
+       w_and_pi_file << delay << "," << pi_A << "," << pi_O << "," << w_A << "," << w_O << "," << avgBlockInterval << endl;
        cout << "Recorded: delay=" << delay << ", pi_A=" << pi_A << ", pi_O=" << pi_O 
-            << ", w_A=" << w_A << ", w_O=" << w_O << endl;
+            << ", w_A=" << w_A << ", w_O=" << w_O << ", avg_interval=" << avgBlockInterval 
+            << " ms (" << blockGenerationIntervals.size() << " blocks)" << endl;
     }
 
     cout << "--- All simulations finished. ---" << endl;
@@ -474,6 +491,10 @@ void reset() {
     // uncle block検出用のデータ構造をクリア
     blocksByHeight.clear();
 
+    // ブロック生成間隔記録用のデータ構造をクリア
+    blockGenerationIntervals.clear();
+    lastBlockGenerationTime = -1;  // 初回は-1で初期化
+
     return;
 }
 
@@ -563,6 +584,13 @@ void simulation(int tie, const std::string& timestamp_dir) {
             // uncle block検出用にブロックを記録
             blocksByHeight[newBlock->height].push_back(newBlock);
 
+            // ブロック生成イベント間の時間間隔を記録（初回を除く）
+            if (lastBlockGenerationTime != -1) {
+                ll generationInterval = newBlock->time - lastBlockGenerationTime;
+                blockGenerationIntervals.push_back(generationInterval);
+            }
+            lastBlockGenerationTime = newBlock->time;
+
             blockQue.push(newBlock);
             if (blockQue.size() > 10000) {
                 block* deleteBlock = blockQue.front();blockQue.pop();
@@ -613,7 +641,6 @@ void simulation(int tie, const std::string& timestamp_dir) {
             }
 
             if (newBlock->height == 100000) {
-                cout << "finalizeBlocks" << endl;
                 finalizeBlocks(newBlock, tie);
             }
 
@@ -686,7 +713,6 @@ void simulation(int tie, const std::string& timestamp_dir) {
 
     cout << "r_A calculated by experiment data: " << r_A << endl;
 
-    cout << "highestHashrateNodeMinedBlocks" << endl;
     ll minedCount = 0;
     for (int i = 0; i < END_ROUND; i++) {
         if (highestHashrateNodeMinedBlocks[i]) {
