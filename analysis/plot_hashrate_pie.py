@@ -2,9 +2,9 @@
 """
 Script to display hashrate distribution as a pie chart
 
-Visualizes the hashrate values set in washiblock.cpp.
-- Node 0-8: Fixed values
-- Node 9-999: Remaining percentage distributed equally
+Visualizes the hashrate values set in blockchain-simulator.cpp.
+- Miner 0-9: Fixed values from real data
+- Miner 10-999: Remaining percentage distributed equally
 """
 
 import matplotlib.pyplot as plt
@@ -15,60 +15,61 @@ plt.rcParams['font.family'] = ['DejaVu Sans']
 
 def calculate_hashrate_distribution():
     """
-    Calculate hashrate distribution using the same logic as washiblock.cpp
+    Calculate hashrate distribution using the same logic as blockchain-simulator.cpp
     """
     node_count = 1000
     
-    # Fixed hashrates for the first 9 nodes (from C++ code)
+    # Fixed hashrates for the first 10 miners (from C++ code)
     fixed_hashrates = [
-        16.534,  # Node 0
-        12.56,   # Node 1
-        11.288,  # Node 2
-        2.226,   # Node 3
-        1.272,   # Node 4
-        0.636,   # Node 5
-        0.318,   # Node 6
-        0.318,   # Node 7
-        0.159    # Node 8
+        27.9383,  # Miner 0
+        15.3179,  # Miner 1
+        12.4277,  # Miner 2
+        10.9827,  # Miner 3
+        8.47784,  # Miner 4
+        4.62428,  # Miner 5
+        4.04624,  # Miner 6
+        3.85356,  # Miner 7
+        2.40848,  # Miner 8
+        1.92678   # Miner 9
     ]
     
     # Sum of fixed hashrates
     hashrate_sum = sum(fixed_hashrates)
     print(f"Sum of fixed hashrates: {hashrate_sum}")
     
-    # Hashrate for each remaining node (9-999)
-    remaining_nodes = node_count - 9
-    remaining_hashrate_per_node = (100 - hashrate_sum) / remaining_nodes
-    print(f"Hashrate per remaining node: {remaining_hashrate_per_node}")
+    # Hashrate for each remaining miner (10-999)
+    remaining_miners = node_count - 10
+    remaining_hashrate_per_miner = (100 - hashrate_sum) / remaining_miners
+    print(f"Hashrate per remaining miner: {remaining_hashrate_per_miner}")
     
-    return fixed_hashrates, remaining_hashrate_per_node, remaining_nodes
+    return fixed_hashrates, remaining_hashrate_per_miner, remaining_miners
 
 def create_pie_chart():
     """
     Create pie chart of hashrate distribution
     """
-    fixed_hashrates, remaining_per_node, remaining_nodes = calculate_hashrate_distribution()
+    fixed_hashrates, remaining_per_miner, remaining_miners = calculate_hashrate_distribution()
     
     # Prepare data for pie chart
     labels = []
     sizes = []
     colors = []
     
-    # Data for top nodes (individual display)
+    # Data for top miners (individual display)
     for i, hashrate in enumerate(fixed_hashrates):
-        labels.append(f'Node {i}\n({hashrate:.3f}%)')
+        labels.append(f'Miner {i}\n({hashrate:.3f}%)')
         sizes.append(hashrate)
     
-    # Display remaining nodes together
-    total_remaining = remaining_per_node * remaining_nodes
-    labels.append(f'Other Nodes\n(Node 9-999)\n({total_remaining:.3f}%)')
+    # Display remaining miners together
+    total_remaining = remaining_per_miner * remaining_miners
+    labels.append(f'Other Miners\n(Miner 10-999)\n({total_remaining:.3f}%)')
     sizes.append(total_remaining)
     
     # Color palette settings (improved for better distinction)
-    node_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                   '#8c564b', '#e377c2', '#17becf', '#bcbd22']  # Node 7を水色に変更
-    # Add light gray color for "Other Nodes"
-    colors = node_colors + ['#d0d0d0']  # 薄いグレーに変更
+    miner_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
+                    '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#aec7e8']  # 10色に拡張
+    # Add light gray color for "Other Miners"
+    colors = miner_colors + ['#d0d0d0']  # 薄いグレーに変更
     
     # For clockwise display starting from 12 o'clock position
     # No need to reverse - we'll use counterclock=False and adjust startangle
@@ -76,20 +77,20 @@ def create_pie_chart():
     # Create pie chart
     fig, ax = plt.subplots(figsize=(12, 10))
     
-    # Set explode to emphasize top nodes
+    # Set explode to emphasize top miners
     explode = [0.05 if size > 10 else 0.02 for size in sizes[:-1]] + [0]  # Don't separate the last "Others"
     
-    # Create custom labels - hide labels for Node 4-8 to avoid overlap
+    # Create custom labels - hide labels for smaller miners to avoid overlap
     display_labels = []
     for i, label in enumerate(labels):
-        if i >= 4 and i <= 8:  # Node 4-8
+        if i >= 5 and i <= 9:  # Miner 5-9
             display_labels.append('')  # Empty label
         else:
             display_labels.append(label)
     
-    # Create custom autopct function to hide percentages for Node 4-8
+    # Create custom autopct function to hide percentages for smaller miners
     def autopct_func(pct):
-        return f'{pct:.2f}%' if pct > 2.0 else ''  # Hide small percentages
+        return f'{pct:.2f}%' if pct > 3.0 else ''  # Hide small percentages
     
     wedges, texts, autotexts = ax.pie(sizes, labels=display_labels, autopct=autopct_func, 
                                      startangle=90, colors=colors, explode=explode,
@@ -98,10 +99,10 @@ def create_pie_chart():
     # Add legend for hashrate distribution
     legend_labels = []
     for i, hashrate in enumerate(fixed_hashrates):
-        legend_labels.append(f'Node {i}: {hashrate:.3f}%')
+        legend_labels.append(f'Miner {i}: {hashrate:.3f}%')
     
-    # Add entry for other nodes
-    legend_labels.append(f'Node 9-999: each {remaining_per_node:.6f}%, total {total_remaining:.3f}%')
+    # Add entry for other miners
+    legend_labels.append(f'Miner 10-999: each {remaining_per_miner:.6f}%, total {total_remaining:.3f}%')
     
     # Place legend on the right side
     ax.legend(wedges, legend_labels, title="Hashrate Distribution", loc="center left", 
@@ -130,31 +131,32 @@ def print_statistics():
     """
     Display statistical information of hashrate distribution
     """
-    fixed_hashrates, remaining_per_node, remaining_nodes = calculate_hashrate_distribution()
+    fixed_hashrates, remaining_per_miner, remaining_miners = calculate_hashrate_distribution()
     
     print("\n=== Hashrate Distribution Statistics ===")
-    print(f"Total nodes: 1000")
-    print(f"Top nodes: 9")
-    print(f"Other nodes: {remaining_nodes}")
+    print(f"Total miners: 1000")
+    print(f"Top miners: 10")
+    print(f"Other miners: {remaining_miners}")
     print()
     
-    print("Top nodes hashrate:")
+    print("Top miners hashrate:")
     for i, hashrate in enumerate(fixed_hashrates):
-        print(f"  Node {i}: {hashrate:.3f}%")
+        print(f"  Miner {i}: {hashrate:.3f}%")
     
     total_fixed = sum(fixed_hashrates)
-    total_remaining = remaining_per_node * remaining_nodes
+    total_remaining = remaining_per_miner * remaining_miners
     
-    print(f"\nTop nodes total: {total_fixed:.3f}%")
-    print(f"Other nodes total: {total_remaining:.3f}%")
+    print(f"\nTop miners total: {total_fixed:.3f}%")
+    print(f"Other miners total: {total_remaining:.3f}%")
     print(f"Grand total: {total_fixed + total_remaining:.3f}%")
-    print(f"Per other node: {remaining_per_node:.6f}%")
+    print(f"Per other miner: {remaining_per_miner:.6f}%")
     
     # Concentration analysis
     print(f"\nConcentration analysis:")
-    print(f"Top 1 node share: {fixed_hashrates[0]:.3f}%")
-    print(f"Top 3 nodes share: {sum(fixed_hashrates[:3]):.3f}%")
-    print(f"Top 5 nodes share: {sum(fixed_hashrates[:5]):.3f}%")
+    print(f"Top 1 miner share: {fixed_hashrates[0]:.3f}%")
+    print(f"Top 3 miners share: {sum(fixed_hashrates[:3]):.3f}%")
+    print(f"Top 5 miners share: {sum(fixed_hashrates[:5]):.3f}%")
+    print(f"Top 10 miners share: {sum(fixed_hashrates):.3f}%")
 
 if __name__ == "__main__":
     print("Hashrate Distribution Pie Chart Generator")
