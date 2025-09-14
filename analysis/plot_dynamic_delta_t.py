@@ -56,28 +56,37 @@ def calculate_hashrate_ratios():
     
     return ratios
 
+def load_w_pi_data(csv_file_path):
+    """w_piデータファイルからデータを読み込み"""
+    try:
+        df = pd.read_csv(csv_file_path)
+        return df
+    except Exception as e:
+        print(f"Error loading w_pi data from {csv_file_path}: {e}")
+        return None
+
 def parse_filename(filename):
     """ファイル名からパラメータを抽出"""
-    # 例: node_0_BTC_6000000_100_100000_first_seen_dynamic_share.csv
+    # 例: miner_0_BTC_6000000_100_100000_first_seen_dynamic_share.csv
     parts = filename.split('_')
     
     if len(parts) < 8:
         return None
     
     try:
-        node_id = int(parts[1])
+        miner_id = int(parts[1])
         blockchain_type = parts[2]
         delay = int(parts[3])
-        node_count = int(parts[4])
+        miner_count = int(parts[4])
         end_round = int(parts[5])
         rule = parts[6]
         difficulty = parts[7]
         
         return {
-            'node_id': node_id,
+            'miner_id': miner_id,
             'blockchain_type': blockchain_type,
             'delay': delay,
-            'node_count': node_count,
+            'miner_count': miner_count,
             'end_round': end_round,
             'rule': rule,
             'difficulty': difficulty
@@ -101,11 +110,11 @@ def get_final_share_from_file(filepath):
     
     return None
 
-def collect_node_data(data_dir):
-    """指定されたディレクトリから各ノードのデータを収集"""
-    node_files = {}
+def collect_miner_data(data_dir):
+    """指定されたディレクトリから各マイナーのデータを収集"""
+    miner_files = {}
     
-    # データディレクトリ内のすべてのnode_*ファイルを検索
+    # データディレクトリ内のすべてのminer_*ファイルを検索
     pattern = os.path.join(data_dir, "miner_*_BTC_*_dynamic_share.csv")
     files = glob.glob(pattern)
     
@@ -116,35 +125,49 @@ def collect_node_data(data_dir):
         if params is None:
             continue
             
-        node_id = params['node_id']
+        miner_id = params['miner_id']
         delay = params['delay']
         
         # 最終マイニングシェアを取得
         final_share = get_final_share_from_file(filepath)
         
         if final_share is not None:
-            if delay not in node_files:
-                node_files[delay] = {}
-            node_files[delay][node_id] = final_share
+            if delay not in miner_files:
+                miner_files[delay] = {}
+            miner_files[delay][miner_id] = final_share
     
-    return node_files
+    return miner_files
 
-def plot_final_mining_shares(node_data, output_dir="analysis"):
-    """各マイナーの最終マイニングシェアをプロット（理論曲線付き）"""
-    # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
-    BTC_TARGET_GENERATION_TIME = 600000
+def plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir="analysis"):
+    """各マイナーの最終マイニングシェアをプロット（動的T値使用）"""
+    
+    # w_piデータから遅延とavg_block_intervalの対応を作成
+    delay_to_avg_interval = {}
+    for _, row in w_pi_data.iterrows():
+        delay = int(row['delay'])
+        avg_interval = float(row['avg_block_interval'])
+        delay_to_avg_interval[delay] = avg_interval
     
     # データを整理
-    delays = sorted(node_data.keys())
-    delta_t_ratios = [delay / BTC_TARGET_GENERATION_TIME for delay in delays]
+    delays = sorted(miner_data.keys())
+    delta_t_ratios = []
+    
+    for delay in delays:
+        if delay in delay_to_avg_interval:
+            avg_interval = delay_to_avg_interval[delay]
+            delta_t_ratio = delay / avg_interval
+            delta_t_ratios.append(delta_t_ratio)
+        else:
+            print(f"Warning: No avg_block_interval found for delay {delay}")
+            delta_t_ratios.append(0)
     
     # 各マイナーのデータを準備（上位9マイナーまで）
     miner_shares = {miner: [] for miner in range(9)}
     
     for delay in delays:
         for miner in range(9):
-            if miner in node_data[delay]:
-                miner_shares[miner].append(node_data[delay][miner])
+            if miner in miner_data[delay]:
+                miner_shares[miner].append(miner_data[delay][miner])
             else:
                 miner_shares[miner].append(0)
     
@@ -153,47 +176,62 @@ def plot_final_mining_shares(node_data, output_dir="analysis"):
     
     # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#17becf', '#bcbd22']  # Miner 7を水色に変更
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22']
     
     for miner in range(9):
         plt.plot(delta_t_ratios, miner_shares[miner], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
                 color=colors[miner], label=f'Miner {miner}')
     
-    plt.xlabel('Δ/T', fontsize=14)
+    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
     plt.ylabel('rᵢ (mining share)', fontsize=14)
+    plt.title('Mining Shares vs Dynamic Δ/T Ratio', fontsize=16)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     
     # 保存（PNG、SVG、PDF形式）
-    output_png = os.path.join(output_dir, "final_mining_shares.png")
-    output_svg = os.path.join(output_dir, "final_mining_shares.svg")
-    output_pdf = os.path.join(output_dir, "final_mining_shares.pdf")
+    output_png = os.path.join(output_dir, "final_mining_shares_dynamic_t.png")
+    output_svg = os.path.join(output_dir, "final_mining_shares_dynamic_t.svg")
+    output_pdf = os.path.join(output_dir, "final_mining_shares_dynamic_t.pdf")
     
     plt.savefig(output_png, dpi=300, bbox_inches='tight')
     plt.savefig(output_svg, format='svg', bbox_inches='tight')
     plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
     
-    print(f"Final mining shares plot saved to: {output_png}")
-    print(f"Final mining shares plot saved to: {output_svg}")
-    print(f"Final mining shares plot saved to: {output_pdf}")
+    print(f"Final mining shares (dynamic T) plot saved to: {output_png}")
+    print(f"Final mining shares (dynamic T) plot saved to: {output_svg}")
+    print(f"Final mining shares (dynamic T) plot saved to: {output_pdf}")
     plt.close()
 
-def plot_miner0_with_theory(node_data, output_dir="analysis"):
-    """Miner 0の最終マイニングシェアと理論値を比較プロット"""
-    # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
-    BTC_TARGET_GENERATION_TIME = 600000
+def plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir="analysis"):
+    """Miner 0の最終マイニングシェアと理論値を比較プロット（動的T値使用）"""
+    
+    # w_piデータから遅延とavg_block_intervalの対応を作成
+    delay_to_avg_interval = {}
+    for _, row in w_pi_data.iterrows():
+        delay = int(row['delay'])
+        avg_interval = float(row['avg_block_interval'])
+        delay_to_avg_interval[delay] = avg_interval
     
     # データを整理
-    delays = sorted(node_data.keys())
-    delta_t_ratios = [delay / BTC_TARGET_GENERATION_TIME for delay in delays]
+    delays = sorted(miner_data.keys())
+    delta_t_ratios = []
+    
+    for delay in delays:
+        if delay in delay_to_avg_interval:
+            avg_interval = delay_to_avg_interval[delay]
+            delta_t_ratio = delay / avg_interval
+            delta_t_ratios.append(delta_t_ratio)
+        else:
+            print(f"Warning: No avg_block_interval found for delay {delay}")
+            delta_t_ratios.append(0)
     
     # Miner 0のデータを準備
     miner0_shares = []
     for delay in delays:
-        if 0 in node_data[delay]:
-            miner0_shares.append(node_data[delay][0])
+        if 0 in miner_data[delay]:
+            miner0_shares.append(miner_data[delay][0])
         else:
             miner0_shares.append(0)
     
@@ -206,71 +244,84 @@ def plot_miner0_with_theory(node_data, output_dir="analysis"):
             color='#1f77b4', label='Miner 0 Experimental Value')
     
     # 理論曲線用の滑らかなデータ点を生成
-    if delays:
-        delta_min = min(delays)
-        delta_max = max(delays)
-        delta_smooth = np.linspace(delta_min, delta_max, 200)
-        delta_t_smooth = [delta / BTC_TARGET_GENERATION_TIME for delta in delta_smooth]
+    if delays and delta_t_ratios:
+        delta_t_min = min(delta_t_ratios)
+        delta_t_max = max(delta_t_ratios)
+        delta_t_smooth = np.linspace(delta_t_min, delta_t_max, 200)
         
         # Miner 0のハッシュレート割合を計算
         hashrate_ratios = calculate_hashrate_ratios()
         miner0_hashrate_ratio = hashrate_ratios[0]
         
-        # Miner 0の理論曲線を計算（αはMiner 0のハッシュレート割合を使用）
-        alpha_miner0 = miner0_hashrate_ratio  # Miner 0のハッシュレート割合をαとして使用
-        
-        # 理論曲線を計算
+        # 理論曲線を計算（動的T値を使用）
         theory_shares = []
-        for delta in delta_smooth:
-            r_A, _, _, _, _ = compute_theoretical_values(alpha_miner0, BTC_TARGET_GENERATION_TIME, delta)
-            # r_A自体がMiner 0（攻撃者）のマイニングシェア
+        for delta_t_ratio in delta_t_smooth:
+            # 任意のT値（例：平均値）を使用してΔを計算
+            avg_t = np.mean([delay_to_avg_interval[d] for d in delays if d in delay_to_avg_interval])
+            delta = delta_t_ratio * avg_t
+            r_A, _, _, _, _ = compute_theoretical_values(miner0_hashrate_ratio, avg_t, delta)
             theory_shares.append(r_A)
         
         # 理論曲線をプロット（破線で表示）
         plt.plot(delta_t_smooth, theory_shares, 
                 linestyle='--', linewidth=2.5, alpha=0.8,
-                color='red', label=f'Theoretical Value for α₀={alpha_miner0:.5f}')
+                color='red', label=f'Theoretical Value for α₀={miner0_hashrate_ratio:.5f}')
     
-    plt.xlabel('Δ/T', fontsize=14)
+    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
     plt.ylabel('r₀ (mining share)', fontsize=14)
+    plt.title('Miner 0: Experimental vs Theoretical (Dynamic T)', fontsize=16)
     plt.grid(True, alpha=0.3)
     plt.legend(fontsize=12)
     plt.tight_layout()
     
     # 保存（PNG、SVG、PDF形式）
-    output_png = os.path.join(output_dir, "miner0_with_theory.png")
-    output_svg = os.path.join(output_dir, "miner0_with_theory.svg")
-    output_pdf = os.path.join(output_dir, "miner0_with_theory.pdf")
+    output_png = os.path.join(output_dir, "miner0_with_theory_dynamic_t.png")
+    output_svg = os.path.join(output_dir, "miner0_with_theory_dynamic_t.svg")
+    output_pdf = os.path.join(output_dir, "miner0_with_theory_dynamic_t.pdf")
     
     plt.savefig(output_png, dpi=300, bbox_inches='tight')
     plt.savefig(output_svg, format='svg', bbox_inches='tight')
     plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
     
-    print(f"Miner 0 with theory plot saved to: {output_png}")
-    print(f"Miner 0 with theory plot saved to: {output_svg}")
-    print(f"Miner 0 with theory plot saved to: {output_pdf}")
+    print(f"Miner 0 with theory (dynamic T) plot saved to: {output_png}")
+    print(f"Miner 0 with theory (dynamic T) plot saved to: {output_svg}")
+    print(f"Miner 0 with theory (dynamic T) plot saved to: {output_pdf}")
     plt.close()
 
-def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
-    """実際のマイニングシェアとハッシュレート割合の比率をプロット（理論曲線付き）"""
-    # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
-    BTC_TARGET_GENERATION_TIME = 600000
+def plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir="analysis"):
+    """実際のマイニングシェアとハッシュレート割合の比率をプロット（動的T値使用）"""
+    
+    # w_piデータから遅延とavg_block_intervalの対応を作成
+    delay_to_avg_interval = {}
+    for _, row in w_pi_data.iterrows():
+        delay = int(row['delay'])
+        avg_interval = float(row['avg_block_interval'])
+        delay_to_avg_interval[delay] = avg_interval
     
     # ハッシュレート割合を計算（0-1の範囲）
     hashrate_ratios = calculate_hashrate_ratios()
     
     # データを整理
-    delays = sorted(node_data.keys())
-    delta_t_ratios = [delay / BTC_TARGET_GENERATION_TIME for delay in delays]
+    delays = sorted(miner_data.keys())
+    delta_t_ratios = []
+    
+    for delay in delays:
+        if delay in delay_to_avg_interval:
+            avg_interval = delay_to_avg_interval[delay]
+            delta_t_ratio = delay / avg_interval
+            delta_t_ratios.append(delta_t_ratio)
+        else:
+            print(f"Warning: No avg_block_interval found for delay {delay}")
+            delta_t_ratios.append(0)
     
     # 各マイナーのデータを準備（上位9マイナーまで）
     miner_ratios = {miner: [] for miner in range(9)}
     
     for delay in delays:
         for miner in range(9):
-            if miner in node_data[delay]:
+            if miner in miner_data[delay]:
                 # mining share: 0-1の範囲（例：0.85 = 85%）
-                actual_share = node_data[delay][miner]
+                actual_share = miner_data[delay][miner]
                 print("miner", miner, "actual_share", actual_share)
                 # hashrate ratio: 0-1の範囲（ハッシュレート割合）
                 expected_share = hashrate_ratios[miner]
@@ -288,7 +339,7 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
     
     # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#17becf', '#bcbd22']  # Miner 7を水色に変更
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22']
     
     for miner in range(9):
         plt.plot(delta_t_ratios, miner_ratios[miner], 
@@ -298,24 +349,25 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
     # 1の基準線を追加（凡例には含めない）
     plt.axhline(y=1, color='black', linestyle='--', alpha=0.5)
     
-    plt.xlabel('Δ/T', fontsize=14)
+    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
     plt.ylabel('rᵢ (mining share) / αᵢ (hashrate ratio)', fontsize=14)
+    plt.title('Mining Share Efficiency vs Dynamic Δ/T Ratio', fontsize=16)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
     
     # 保存（PNG、SVG、PDF形式）
-    output_png = os.path.join(output_dir, "mining_share_efficiency.png")
-    output_svg = os.path.join(output_dir, "mining_share_efficiency.svg")
-    output_pdf = os.path.join(output_dir, "mining_share_efficiency.pdf")
+    output_png = os.path.join(output_dir, "mining_share_efficiency_dynamic_t.png")
+    output_svg = os.path.join(output_dir, "mining_share_efficiency_dynamic_t.svg")
+    output_pdf = os.path.join(output_dir, "mining_share_efficiency_dynamic_t.pdf")
     
     plt.savefig(output_png, dpi=300, bbox_inches='tight')
     plt.savefig(output_svg, format='svg', bbox_inches='tight')
     plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
     
-    print(f"Mining share efficiency plot saved to: {output_png}")
-    print(f"Mining share efficiency plot saved to: {output_svg}")
-    print(f"Mining share efficiency plot saved to: {output_pdf}")
+    print(f"Mining share efficiency (dynamic T) plot saved to: {output_png}")
+    print(f"Mining share efficiency (dynamic T) plot saved to: {output_svg}")
+    print(f"Mining share efficiency (dynamic T) plot saved to: {output_pdf}")
     plt.close()
 
 def main():
@@ -331,29 +383,39 @@ def main():
     print(f"Using data directory: {latest_dir}")
     latest_dir = "data/real-hashrate-dist-ver2"
     
-    # データを収集
-    node_data = collect_node_data(latest_dir)
+    # w_piデータを読み込み
+    w_pi_file = os.path.join(latest_dir, "BTC_1000_100000_first_seen_dynamic_w_pi.csv")
+    w_pi_data = load_w_pi_data(w_pi_file)
     
-    if not node_data:
+    if w_pi_data is None:
+        print("Failed to load w_pi data!")
+        return
+    
+    print(f"Loaded w_pi data with {len(w_pi_data)} entries")
+    
+    # マイナーデータを収集
+    miner_data = collect_miner_data(latest_dir)
+    
+    if not miner_data:
         print("No miner data found!")
         return
     
-    print(f"Found data for {len(node_data)} different delay values")
+    print(f"Found data for {len(miner_data)} different delay values")
     
     # 出力ディレクトリを作成（タイムスタンプ付き）
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_dir = f"analysis/miner_shares_{timestamp}"
+    output_dir = f"analysis/miner_shares_dynamic_t_{timestamp}"
     os.makedirs(output_dir, exist_ok=True)
     print(f"Output directory: {output_dir}")
     
-    # グラフ1: 最終マイニングシェア
-    plot_final_mining_shares(node_data, output_dir)
+    # グラフ1: 最終マイニングシェア（動的T値使用）
+    plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir)
     
-    # グラフ2: Miner 0と理論値の比較
-    plot_miner0_with_theory(node_data, output_dir)
+    # グラフ2: Miner 0と理論値の比較（動的T値使用）
+    plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir)
     
-    # グラフ3: マイニングシェア効率
-    plot_share_vs_hashrate_ratio(node_data, output_dir)
+    # グラフ3: マイニングシェア効率（動的T値使用）
+    plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir)
     
     # ハッシュレート割合を表示
     hashrate_ratios = calculate_hashrate_ratios()
