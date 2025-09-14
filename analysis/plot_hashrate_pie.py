@@ -57,17 +57,17 @@ def create_pie_chart():
     
     # Data for top miners (individual display)
     for i, hashrate in enumerate(fixed_hashrates):
-        labels.append(f'Miner {i}\n({hashrate:.3f}%)')
+        labels.append(f'miner {i}')
         sizes.append(hashrate)
     
     # Display remaining miners together
     total_remaining = remaining_per_miner * remaining_miners
-    labels.append(f'Other Miners\n(Miner 10-999)\n({total_remaining:.3f}%)')
+    labels.append(f'Other miners\n(miner 10-999)')
     sizes.append(total_remaining)
     
     # Color palette settings (improved for better distinction)
     miner_colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-                    '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#aec7e8']  # 10色に拡張
+                    '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#ff9896']  # 10色に拡張
     # Add light gray color for "Other Miners"
     colors = miner_colors + ['#d0d0d0']  # 薄いグレーに変更
     
@@ -80,17 +80,12 @@ def create_pie_chart():
     # Set explode to emphasize top miners
     explode = [0.05 if size > 10 else 0.02 for size in sizes[:-1]] + [0]  # Don't separate the last "Others"
     
-    # Create custom labels - hide labels for smaller miners to avoid overlap
-    display_labels = []
-    for i, label in enumerate(labels):
-        if i >= 5 and i <= 9:  # Miner 5-9
-            display_labels.append('')  # Empty label
-        else:
-            display_labels.append(label)
+    # Display all labels for miners 0-9
+    display_labels = labels
     
-    # Create custom autopct function to hide percentages for smaller miners
+    # Create custom autopct function to show percentages for all miners
     def autopct_func(pct):
-        return f'{pct:.2f}%' if pct > 3.0 else ''  # Hide small percentages
+        return f'{pct:.2f}%'
     
     wedges, texts, autotexts = ax.pie(sizes, labels=display_labels, autopct=autopct_func, 
                                      startangle=90, colors=colors, explode=explode,
@@ -99,10 +94,10 @@ def create_pie_chart():
     # Add legend for hashrate distribution
     legend_labels = []
     for i, hashrate in enumerate(fixed_hashrates):
-        legend_labels.append(f'Miner {i}: {hashrate:.3f}%')
+        legend_labels.append(f'miner {i}: {hashrate:.3f}%')
     
     # Add entry for other miners
-    legend_labels.append(f'Miner 10-999: each {remaining_per_miner:.6f}%, total {total_remaining:.3f}%')
+    legend_labels.append(f'miner 10-999: each {remaining_per_miner:.6f}%, total {total_remaining:.3f}%')
     
     # Place legend on the right side
     ax.legend(wedges, legend_labels, title="Hashrate Distribution", loc="center left", 
@@ -141,7 +136,7 @@ def print_statistics():
     
     print("Top miners hashrate:")
     for i, hashrate in enumerate(fixed_hashrates):
-        print(f"  Miner {i}: {hashrate:.3f}%")
+        print(f"  miner {i}: {hashrate:.3f}%")
     
     total_fixed = sum(fixed_hashrates)
     total_remaining = remaining_per_miner * remaining_miners

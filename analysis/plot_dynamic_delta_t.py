@@ -162,11 +162,11 @@ def plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir="analys
             print(f"Warning: No avg_block_interval found for delay {delay}")
             delta_t_ratios.append(0)
     
-    # 各マイナーのデータを準備（上位9マイナーまで）
-    miner_shares = {miner: [] for miner in range(9)}
+    # 各マイナーのデータを準備（上位10マイナーまで）
+    miner_shares = {miner: [] for miner in range(10)}
     
     for delay in delays:
-        for miner in range(9):
+        for miner in range(10):
             if miner in miner_data[delay]:
                 miner_shares[miner].append(miner_data[delay][miner])
             else:
@@ -177,9 +177,9 @@ def plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir="analys
     
     # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#17becf', '#bcbd22']
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#ff9896']
     
-    for miner in range(9):
+    for miner in range(10):
         plt.plot(delta_t_ratios, miner_shares[miner], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
                 color=colors[miner], label=f'miner {miner}')
@@ -203,6 +203,61 @@ def plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir="analys
     print(f"Final mining shares (dynamic T) plot saved to: {output_svg}")
     print(f"Final mining shares (dynamic T) plot saved to: {output_pdf}")
     plt.close()
+
+def generate_miner_json_data(miner_id, miner_data, w_pi_data, output_dir="analysis"):
+    """指定されたマイナーのJSONデータを生成"""
+    
+    # w_piデータから遅延とavg_block_intervalの対応を作成
+    delay_to_avg_interval = {}
+    for _, row in w_pi_data.iterrows():
+        delay = int(row['delay'])
+        avg_interval = float(row['avg_block_interval'])
+        delay_to_avg_interval[delay] = avg_interval
+    
+    # データを整理
+    delays = sorted(miner_data.keys())
+    delta_t_ratios = []
+    
+    for delay in delays:
+        if delay in delay_to_avg_interval:
+            avg_interval = delay_to_avg_interval[delay]
+            delta_t_ratio = delay / avg_interval
+            delta_t_ratios.append(delta_t_ratio)
+        else:
+            print(f"Warning: No avg_block_interval found for delay {delay}")
+            delta_t_ratios.append(0)
+    
+    # 指定されたマイナーのデータを準備
+    miner_shares = []
+    for delay in delays:
+        if miner_id in miner_data[delay]:
+            miner_shares.append(miner_data[delay][miner_id])
+        else:
+            miner_shares.append(0)
+    
+    # 指定されたマイナーのハッシュレート割合を取得
+    hashrate_ratios = calculate_hashrate_ratios()
+    miner_hashrate_ratio = hashrate_ratios[miner_id]
+    
+    # JSONデータを作成
+    miner_json_data = []
+    for i, (delta_t_ratio, r_i) in enumerate(zip(delta_t_ratios, miner_shares)):
+        r_i_over_alpha_i = r_i / miner_hashrate_ratio if miner_hashrate_ratio > 0 else 0
+        miner_json_data.append({
+            "delta_t_ratio": float(delta_t_ratio),
+            f"r_{miner_id}": float(r_i),
+            f"r_{miner_id}_over_alpha_{miner_id}": float(r_i_over_alpha_i),
+            f"alpha_{miner_id}": float(miner_hashrate_ratio),
+            "delay": int(delays[i]) if i < len(delays) else 0
+        })
+    
+    # JSONファイルに保存
+    json_output_path = os.path.join(output_dir, f"miner{miner_id}_data.json")
+    with open(json_output_path, 'w') as f:
+        json.dump(miner_json_data, f, indent=2, ensure_ascii=False)
+    print(f"Miner {miner_id} data saved to: {json_output_path}")
+    
+    return miner_json_data
 
 def plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir="analysis"):
     """Miner 0の最終マイニングシェアと理論値を比較プロット（動的T値使用）"""
@@ -239,23 +294,8 @@ def plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir="analysi
     hashrate_ratios = calculate_hashrate_ratios()
     miner0_hashrate_ratio = hashrate_ratios[0]
     
-    # JSONデータを作成（Miner 0の詳細データ）
-    miner0_data = []
-    for i, (delta_t_ratio, r_0) in enumerate(zip(delta_t_ratios, miner0_shares)):
-        r_0_over_alpha_0 = r_0 / miner0_hashrate_ratio if miner0_hashrate_ratio > 0 else 0
-        miner0_data.append({
-            "delta_t_ratio": float(delta_t_ratio),
-            "r_0": float(r_0),
-            "r_0_over_alpha_0": float(r_0_over_alpha_0),
-            "alpha_0": float(miner0_hashrate_ratio),
-            "delay": int(delays[i]) if i < len(delays) else 0
-        })
-    
-    # JSONファイルに保存
-    json_output_path = os.path.join(output_dir, "miner0_data.json")
-    with open(json_output_path, 'w') as f:
-        json.dump(miner0_data, f, indent=2, ensure_ascii=False)
-    print(f"Miner 0 data saved to: {json_output_path}")
+    # JSONデータを作成（Miner 0の詳細データ）- 新しい関数を使用
+    generate_miner_json_data(0, miner_data, w_pi_data, output_dir)
     
     # グラフを作成
     plt.figure(figsize=(12, 8))
@@ -335,11 +375,11 @@ def plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir="an
             print(f"Warning: No avg_block_interval found for delay {delay}")
             delta_t_ratios.append(0)
     
-    # 各マイナーのデータを準備（上位9マイナーまで）
-    miner_ratios = {miner: [] for miner in range(9)}
+    # 各マイナーのデータを準備（上位10マイナーまで）
+    miner_ratios = {miner: [] for miner in range(10)}
     
     for delay in delays:
-        for miner in range(9):
+        for miner in range(10):
             if miner in miner_data[delay]:
                 # mining share: 0-1の範囲（例：0.85 = 85%）
                 actual_share = miner_data[delay][miner]
@@ -360,9 +400,9 @@ def plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir="an
     
     # 色の設定（より識別しやすいカラーパレット）
     colors = ['#1f77b4', '#ff7f0e', '#2ca02c', '#d62728', '#9467bd', 
-              '#8c564b', '#e377c2', '#17becf', '#bcbd22']
+              '#8c564b', '#e377c2', '#17becf', '#bcbd22', '#ff9896']
     
-    for miner in range(9):
+    for miner in range(10):
         plt.plot(delta_t_ratios, miner_ratios[miner], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
                 color=colors[miner], label=f'miner {miner}')
@@ -436,6 +476,11 @@ def main():
     
     # グラフ3: マイニングシェア効率（動的T値使用）
     plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir)
+    
+    # 追加: Miner 1とMiner 9のJSONデータを生成
+    print("\nGenerating additional JSON data for miner 1 and miner 9...")
+    generate_miner_json_data(1, miner_data, w_pi_data, output_dir)
+    generate_miner_json_data(9, miner_data, w_pi_data, output_dir)
     
     # ハッシュレート割合を表示
     hashrate_ratios = calculate_hashrate_ratios()
