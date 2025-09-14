@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import glob
 import os
 import numpy as np
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Tuple
@@ -181,11 +182,10 @@ def plot_final_mining_shares_dynamic_t(miner_data, w_pi_data, output_dir="analys
     for miner in range(9):
         plt.plot(delta_t_ratios, miner_shares[miner], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
-                color=colors[miner], label=f'Miner {miner}')
+                color=colors[miner], label=f'miner {miner}')
     
-    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
-    plt.ylabel('rᵢ (mining share)', fontsize=14)
-    plt.title('Mining Shares vs Dynamic Δ/T Ratio', fontsize=16)
+    plt.xlabel('Δ/T', fontsize=14)
+    plt.ylabel('rᵢ', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
@@ -235,13 +235,35 @@ def plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir="analysi
         else:
             miner0_shares.append(0)
     
+    # Miner 0のハッシュレート割合を取得
+    hashrate_ratios = calculate_hashrate_ratios()
+    miner0_hashrate_ratio = hashrate_ratios[0]
+    
+    # JSONデータを作成（Miner 0の詳細データ）
+    miner0_data = []
+    for i, (delta_t_ratio, r_0) in enumerate(zip(delta_t_ratios, miner0_shares)):
+        r_0_over_alpha_0 = r_0 / miner0_hashrate_ratio if miner0_hashrate_ratio > 0 else 0
+        miner0_data.append({
+            "delta_t_ratio": float(delta_t_ratio),
+            "r_0": float(r_0),
+            "r_0_over_alpha_0": float(r_0_over_alpha_0),
+            "alpha_0": float(miner0_hashrate_ratio),
+            "delay": int(delays[i]) if i < len(delays) else 0
+        })
+    
+    # JSONファイルに保存
+    json_output_path = os.path.join(output_dir, "miner0_data.json")
+    with open(json_output_path, 'w') as f:
+        json.dump(miner0_data, f, indent=2, ensure_ascii=False)
+    print(f"Miner 0 data saved to: {json_output_path}")
+    
     # グラフを作成
     plt.figure(figsize=(12, 8))
     
     # Miner 0の実験データをプロット
     plt.plot(delta_t_ratios, miner0_shares, 
             marker='o', linestyle='-', linewidth=2, markersize=8,
-            color='#1f77b4', label='Miner 0 Experimental Value')
+            color='#1f77b4', label='miner 0 Experimental Value')
     
     # 理論曲線用の滑らかなデータ点を生成
     if delays and delta_t_ratios:
@@ -267,9 +289,8 @@ def plot_miner0_with_theory_dynamic_t(miner_data, w_pi_data, output_dir="analysi
                 linestyle='--', linewidth=2.5, alpha=0.8,
                 color='red', label=f'Theoretical Value for α₀={miner0_hashrate_ratio:.5f}')
     
-    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
-    plt.ylabel('r₀ (mining share)', fontsize=14)
-    plt.title('Miner 0: Experimental vs Theoretical (Dynamic T)', fontsize=16)
+    plt.xlabel('Δ/T', fontsize=14)
+    plt.ylabel('r₀', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(fontsize=12)
     plt.tight_layout()
@@ -344,14 +365,13 @@ def plot_share_vs_hashrate_ratio_dynamic_t(miner_data, w_pi_data, output_dir="an
     for miner in range(9):
         plt.plot(delta_t_ratios, miner_ratios[miner], 
                 marker='o', linestyle='-', linewidth=2, markersize=6,
-                color=colors[miner], label=f'Miner {miner}')
+                color=colors[miner], label=f'miner {miner}')
     
     # 1の基準線を追加（凡例には含めない）
     plt.axhline(y=1, color='black', linestyle='--', alpha=0.5)
     
-    plt.xlabel('Δ/T (dynamic T)', fontsize=14)
-    plt.ylabel('rᵢ (mining share) / αᵢ (hashrate ratio)', fontsize=14)
-    plt.title('Mining Share Efficiency vs Dynamic Δ/T Ratio', fontsize=16)
+    plt.xlabel('Δ/T', fontsize=14)
+    plt.ylabel('MPRᵢ', fontsize=14)
     plt.grid(True, alpha=0.3)
     plt.legend(bbox_to_anchor=(1.05, 1), loc='upper left')
     plt.tight_layout()
@@ -381,7 +401,7 @@ def main():
     # 最新のディレクトリを選択
     latest_dir = max(data_dirs, key=os.path.getctime)
     print(f"Using data directory: {latest_dir}")
-    latest_dir = "data/real-hashrate-dist-ver2"
+    latest_dir = "data/real-hashrate-dist-ver2-with-dynamic-T"
     
     # w_piデータを読み込み
     w_pi_file = os.path.join(latest_dir, "BTC_1000_100000_first_seen_dynamic_w_pi.csv")
@@ -421,7 +441,7 @@ def main():
     hashrate_ratios = calculate_hashrate_ratios()
     print("\nハッシュレート割合:")
     for miner in range(10):  # 上位10マイナー（0-9番）を表示
-        print(f"Miner {miner}: {hashrate_ratios[miner]:.4f} ({hashrate_ratios[miner]*100:.2f}%)")
+        print(f"miner {miner}: {hashrate_ratios[miner]:.4f} ({hashrate_ratios[miner]*100:.2f}%)")
     
     print(f"\nAll plots saved to directory: {output_dir}")
 
