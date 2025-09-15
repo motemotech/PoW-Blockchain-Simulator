@@ -1,4 +1,5 @@
 import glob
+import json
 import os
 from datetime import datetime
 from typing import List, Tuple, Optional, Dict
@@ -9,16 +10,16 @@ import matplotlib.pyplot as plt
 
 # 画像出力用データディレクトリを指定する変数（Noneの場合は最新ディレクトリを自動選択）
 DATA_DIRS: Dict[str, Optional[str]] = {
-    "no_adjustment": "data/theory-alpha-0.5-1000",  # 難易度調整なし
-    "btc_adjustment": "data/compare-btc-alpha-0.5-1000",  # BTCの難易度調整
-    "eth_adjustment": "data/compare-eth-alpha-0.5-1000",  # ETHの難易度調整
+    "no_adjustment": "data/theory-alpha-0.5-1000-ver2",  # 難易度調整なし
+    "btc_adjustment": "data/compare-btc-alpha-0.5-1000-ver2",  # BTCの難易度調整
+    "eth_adjustment": "data/compare-eth-alpha-0.5-1000-ver2",  # ETHの難易度調整
 }
 
 # プロット用の色とラベル設定
 PLOT_CONFIG = {
-    "no_adjustment": {"color": "blue", "label": "No Difficulty Adjustment", "marker": "o"},
-    "btc_adjustment": {"color": "orange", "label": "BTC Difficulty Adjustment", "marker": "o"},
-    "eth_adjustment": {"color": "green", "label": "ETH Difficulty Adjustment", "marker": "o"},
+    "no_adjustment": {"color": "blue", "label": "No Difficulty Adjustment", "caption": "no adjustment", "marker": "o"},
+    "btc_adjustment": {"color": "orange", "label": "BTC Difficulty Adjustment", "caption": "BTC", "marker": "o"},
+    "eth_adjustment": {"color": "green", "label": "ETH Difficulty Adjustment", "caption": "ETH", "marker": "o"},
 }
 
 
@@ -109,8 +110,8 @@ def get_target_generation_time(blockchain_type: str) -> float:
         raise ValueError(f"Unknown blockchain type: {blockchain_type}")
 
 
-def load_w_and_pi_data(data_dir: str, blockchain_type: str, difficulty_type: str) -> Tuple[pd.DataFrame, int]:
-    """blockchain_typeとdifficulty_typeに基づいてw_piファイルを読み込み、ノード数も返す"""
+def load_w_and_pi_data(data_dir: str, blockchain_type: str, difficulty_type: str) -> Tuple[pd.DataFrame, int, np.ndarray]:
+    """blockchain_typeとdifficulty_typeに基づいてw_piファイルを読み込み、ノード数とavg_block_intervalも返す"""
     pattern = os.path.join(data_dir, f"{blockchain_type}_*_{difficulty_type}_w_pi.csv")
     files = glob.glob(pattern)
     
@@ -119,7 +120,31 @@ def load_w_and_pi_data(data_dir: str, blockchain_type: str, difficulty_type: str
     
     # 複数ファイルがある場合は最初のものを使用
     w_and_pi_file = files[0]
+    
+    # CSVファイルを読み込み、重複ヘッダーと空行を処理
     df = pd.read_csv(w_and_pi_file)
+    
+    # 重複したヘッダー行を除去（データとしてヘッダー文字列が含まれている行を削除）
+    df = df[df['delay'] != 'delay'].copy()
+    
+    # 空行を除去
+    df = df.dropna().copy()
+    
+    # データ型を明示的に指定
+    numeric_columns = ['delay', 'pi_A', 'pi_O', 'w_A', 'w_O', 'avg_block_interval']
+    for col in numeric_columns:
+        if col in df.columns:
+            df[col] = pd.to_numeric(df[col], errors='coerce')
+    
+    # NaN値がある行を削除
+    df = df.dropna().copy()
+    
+    # avg_block_intervalカラムが存在することを確認
+    if 'avg_block_interval' not in df.columns:
+        raise ValueError(f"avg_block_interval column not found in {w_and_pi_file}")
+    
+    # avg_block_intervalを取得
+    avg_block_intervals = df['avg_block_interval'].values
     
     # ファイル名からノード数を取得
     # フォーマット: {blockchain_type}_[ノード数]_[endround数]_{difficulty_type}_w_pi.csv
@@ -134,7 +159,7 @@ def load_w_and_pi_data(data_dir: str, blockchain_type: str, difficulty_type: str
     except Exception:
         raise RuntimeError(f"Could not determine node count from w_pi file name: {w_and_pi_file}")
     
-    return df, node_count
+    return df, node_count, avg_block_intervals
 
 
 def load_final_share_points(data_dir: str, blockchain_type: str, difficulty_type: str, target_generation_time: float) -> Tuple[np.ndarray, np.ndarray, np.ndarray, int]:
@@ -164,12 +189,14 @@ def load_final_share_points(data_dir: str, blockchain_type: str, difficulty_type
                 elif node_count != current_node_count:
                     print(f"Warning: Inconsistent node count found: {node_count} vs {current_node_count}")
             T = target_generation_time  # ブロックチェーンタイプに応じた生成時間を使用
-        except Exception:
+        except Exception as e:
+            print(f"Warning: Could not parse filename {base}: {e}")
             # Skip unexpected names
             continue
 
         df = pd.read_csv(fp, header=None)
         if df.empty:
+            print(f"Warning: Empty file {base}")
             continue
         
         # CSVファイルの最後の行から最終的なマイニングシェアを取得
@@ -177,7 +204,8 @@ def load_final_share_points(data_dir: str, blockchain_type: str, difficulty_type
         last_line = df.iloc[-1, 0]
         try:
             final_share = float(last_line.split(": ")[1])
-        except (IndexError, ValueError):
+        except (IndexError, ValueError) as e:
+            print(f"Warning: Could not parse final share from {base}: {e}")
             continue
 
         deltas.append(delay)
@@ -195,16 +223,22 @@ def load_final_share_points(data_dir: str, blockchain_type: str, difficulty_type
 
 def load_algorithm_data(data_dir: str) -> Dict[str, Dict]:
     """指定されたディレクトリから各変数のデータを読み込む"""
+    print(f"DEBUG: Loading data from {data_dir}")
+    
     blockchain_type = detect_blockchain_type(data_dir)
     difficulty_type = detect_difficulty_type(data_dir)
     target_generation_time = get_target_generation_time(blockchain_type)
     
-    # w_piデータの読み込み
-    w_and_pi_df, node_count_w_pi = load_w_and_pi_data(data_dir, blockchain_type, difficulty_type)
+    print(f"DEBUG: Detected blockchain_type={blockchain_type}, difficulty_type={difficulty_type}, target_generation_time={target_generation_time}")
+    
+    # w_piデータの読み込み（avg_block_intervalも含む）
+    w_and_pi_df, node_count_w_pi, avg_block_intervals = load_w_and_pi_data(data_dir, blockchain_type, difficulty_type)
+    print(f"DEBUG: Loaded w_pi data: {len(w_and_pi_df)} rows, node_count={node_count_w_pi}")
     
     # 最終シェアデータの読み込み
     Delta_final, T_final, r_A_data_raw, node_count_share = load_final_share_points(
         data_dir, blockchain_type, difficulty_type, target_generation_time)
+    print(f"DEBUG: Loaded share data: {len(Delta_final)} points, node_count={node_count_share}")
     
     # データの整理
     Delta_pi_w = w_and_pi_df['delay'].values
@@ -217,6 +251,15 @@ def load_algorithm_data(data_dir: str) -> Dict[str, Dict]:
     pi_w_order = np.argsort(Delta_pi_w)
     final_order = np.argsort(Delta_final)
     
+    # r_Aデータに対応するavg_block_intervalをマッピング
+    # Delta_finalの各値に対して、最も近いDelta_pi_wのavg_block_intervalを見つける
+    r_A_avg_block_intervals = []
+    for delta_final in Delta_final[final_order]:
+        # 最も近いDelta_pi_wを見つける
+        closest_idx = np.argmin(np.abs(Delta_pi_w[pi_w_order] - delta_final))
+        r_A_avg_block_intervals.append(avg_block_intervals[pi_w_order][closest_idx])
+    r_A_avg_block_intervals = np.array(r_A_avg_block_intervals)
+    
     return {
         "blockchain_type": blockchain_type,
         "difficulty_type": difficulty_type,
@@ -227,8 +270,10 @@ def load_algorithm_data(data_dir: str) -> Dict[str, Dict]:
         "pi_O_data": pi_O_data[pi_w_order],
         "w_A_data": w_A_data[pi_w_order],
         "w_O_data": w_O_data[pi_w_order],
+        "avg_block_intervals": avg_block_intervals[pi_w_order],  # avg_block_intervalをTとして使用
         "Delta_final": Delta_final[final_order],
         "r_A_data": r_A_data_raw[final_order],
+        "r_A_avg_block_intervals": r_A_avg_block_intervals,  # r_Aデータに対応するavg_block_interval
     }
 
 
@@ -238,46 +283,51 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
     plt.style.use('seaborn-v0_8-whitegrid')
     fig, ax = plt.subplots(1, 1, figsize=(12, 8))
     
-    # 理論曲線用の滑らかなデルタ値を作成
+    # r_Aの場合、Δ/T値をJSONで出力するためのデータを収集
+    delta_over_T_data = {}
+    
+    # 理論曲線用の統一されたデルタ範囲を計算
     all_deltas = []
-    all_T = None
+    representative_T = None
     
     for alg_name, data in all_data.items():
         if variable_name == "r_A":
             all_deltas.extend(data["Delta_final"])
+            if representative_T is None:
+                representative_T = data["target_generation_time"]
         else:
             all_deltas.extend(data["Delta_pi_w"])
-        if all_T is None:
-            all_T = data["target_generation_time"]
+            if representative_T is None:
+                representative_T = np.mean(data["avg_block_intervals"])
     
     delta_min = min(all_deltas)
     delta_max = max(all_deltas)
     delta_smooth = np.linspace(delta_min, delta_max, 200)
     
-    # 理論曲線を計算してプロット
+    # 統一された理論曲線を計算
     theory_smooth = []
     for delta in delta_smooth:
         if variable_name == "r_A":
-            r_A_th, _, _, _, _ = compute_theoretical_values(alpha_fixed, all_T, delta)
+            r_A_th, _, _, _, _ = compute_theoretical_values(alpha_fixed, representative_T, delta)
             theory_smooth.append(r_A_th)
         elif variable_name == "pi_A":
-            _, pi_A_th, _, _, _ = compute_theoretical_values(alpha_fixed, all_T, delta)
+            _, pi_A_th, _, _, _ = compute_theoretical_values(alpha_fixed, representative_T, delta)
             theory_smooth.append(pi_A_th)
         elif variable_name == "pi_O":
-            _, _, pi_O_th, _, _ = compute_theoretical_values(alpha_fixed, all_T, delta)
+            _, _, pi_O_th, _, _ = compute_theoretical_values(alpha_fixed, representative_T, delta)
             theory_smooth.append(pi_O_th)
         elif variable_name == "W_A":
-            _, _, _, W_A_th, _ = compute_theoretical_values(alpha_fixed, all_T, delta)
+            _, _, _, W_A_th, _ = compute_theoretical_values(alpha_fixed, representative_T, delta)
             theory_smooth.append(W_A_th)
         elif variable_name == "W_O":
-            _, _, _, _, W_O_th = compute_theoretical_values(alpha_fixed, all_T, delta)
+            _, _, _, _, W_O_th = compute_theoretical_values(alpha_fixed, representative_T, delta)
             theory_smooth.append(W_O_th)
     
     theory_smooth = np.array(theory_smooth)
-    x_smooth = delta_smooth / all_T
+    x_smooth = delta_smooth / representative_T
     
-    # 理論曲線をプロット
-    ax.plot(x_smooth, theory_smooth, color="crimson", lw=3, 
+    # 統一された理論曲線をプロット（赤い実線）
+    ax.plot(x_smooth, theory_smooth, color="red", lw=3, 
            label=f"Theory (α={alpha_fixed})", zorder=10)
     
     # 各アルゴリズムのデータをプロット
@@ -285,20 +335,34 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
         config = PLOT_CONFIG[alg_name]
         
         if variable_name == "r_A":
-            x_vals = data["Delta_final"] / data["target_generation_time"]
+            # r_Aの場合は実際のavg_block_intervalを使用
+            x_vals = data["Delta_final"] / data["r_A_avg_block_intervals"]
             y_vals = data["r_A_data"]
-        elif variable_name == "pi_A":
-            x_vals = data["Delta_pi_w"] / data["target_generation_time"]
-            y_vals = data["pi_A_data"]
-        elif variable_name == "pi_O":
-            x_vals = data["Delta_pi_w"] / data["target_generation_time"]
-            y_vals = data["pi_O_data"]
-        elif variable_name == "W_A":
-            x_vals = data["Delta_pi_w"] / data["target_generation_time"]
-            y_vals = data["w_A_data"]
-        elif variable_name == "W_O":
-            x_vals = data["Delta_pi_w"] / data["target_generation_time"]
-            y_vals = data["w_O_data"]
+            
+            # Δ/TデータをJSON出力用に収集
+            delta_over_T_data[alg_name] = {
+                "Delta": [float(x) for x in data["Delta_final"].tolist()],
+                "T_actual": [float(x) for x in data["r_A_avg_block_intervals"].tolist()],
+                "T_target": float(data["target_generation_time"]),
+                "Delta_over_T": [float(x) for x in x_vals.tolist()],
+                "r_A": [float(x) for x in y_vals.tolist()],
+                "blockchain_type": data["blockchain_type"],
+                "difficulty_type": data["difficulty_type"],
+                "node_count": int(data["node_count"])
+            }
+            
+        else:
+            # pi_A, pi_O, W_A, W_Oの場合はavg_block_intervalを使用
+            x_vals = data["Delta_pi_w"] / data["avg_block_intervals"]
+            
+            if variable_name == "pi_A":
+                y_vals = data["pi_A_data"]
+            elif variable_name == "pi_O":
+                y_vals = data["pi_O_data"]
+            elif variable_name == "W_A":
+                y_vals = data["w_A_data"]
+            elif variable_name == "W_O":
+                y_vals = data["w_O_data"]
         
         ax.scatter(x_vals, y_vals, s=50, alpha=0.8, 
                   color=config["color"], label=config["label"], 
@@ -308,7 +372,7 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
     ax.set_xlabel(r"$\Delta/T$", fontsize=14)
     
     if variable_name == "r_A":
-        ax.set_ylabel("r_A (mining share)", fontsize=14)
+        ax.set_ylabel("r_A", fontsize=14)
     else:
         ax.set_ylabel(f"${variable_name}$", fontsize=14)
     
@@ -332,12 +396,236 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
     print(f"Saved {variable_name} comparison figure to: {output_svg}")
     print(f"Saved {variable_name} comparison figure to: {output_pdf}")
     
+    # r_Aの場合、Δ/TデータをJSONファイルとして出力
+    if variable_name == "r_A" and delta_over_T_data:
+        output_json = f"{output_file_base}_delta_over_T.json"
+        
+        # メタデータを追加
+        json_output = {
+            "metadata": {
+                "variable": variable_name,
+                "alpha_fixed": float(alpha_fixed),
+                "generated_at": datetime.now().isoformat(),
+                "description": "Delta/T values and r_A data for comparison of difficulty adjustment algorithms"
+            },
+            "algorithms": delta_over_T_data
+        }
+        
+        with open(output_json, 'w', encoding='utf-8') as f:
+            json.dump(json_output, f, indent=2, ensure_ascii=False)
+        
+        print(f"Saved {variable_name} Δ/T data to: {output_json}")
+    
     if show_plot:
         try:
             plt.show()
         except Exception:
             pass
     plt.close()
+
+
+def create_r_A_comparison_plots(all_data: Dict[str, Dict], output_dir: str, 
+                               alpha_fixed: float = 0.5, show_plot: bool = False) -> None:
+    """r_Aの比較プロットを動的なTとターゲットTで2つ作成"""
+    
+    print(f"DEBUG: Creating r_A plots with {len(all_data)} algorithms")
+    for alg_name, data in all_data.items():
+        print(f"DEBUG: {alg_name}: {len(data['Delta_final'])} data points")
+    
+    # 同じ遅延値をグルーピング
+    delay_groups = {}
+    for alg_name, data in all_data.items():
+        for i, delay in enumerate(data["Delta_final"]):
+            if delay not in delay_groups:
+                delay_groups[delay] = {}
+            delay_groups[delay][alg_name] = {
+                "r_A": data["r_A_data"][i],
+                "T_actual": data["r_A_avg_block_intervals"][i],
+                "T_target": data["target_generation_time"]
+            }
+    
+    print(f"DEBUG: Created delay groups with {len(delay_groups)} unique delays")
+    for delay in sorted(delay_groups.keys())[:5]:  # 最初の5つの遅延値を表示
+        print(f"DEBUG: Delay {delay}: {list(delay_groups[delay].keys())}")
+    
+    # 遅延値でソート
+    sorted_delays = sorted(delay_groups.keys())
+    
+    # 2つのプロット（動的T vs ターゲットT）を作成
+    plot_types = [
+        {"title_suffix": "Actual_T", "use_actual_T": True, "label": "Actual T (avg_block_interval)"},
+        {"title_suffix": "Target_T", "use_actual_T": False, "label": "Target T"}
+    ]
+    
+    for plot_type in plot_types:
+        plt.style.use('seaborn-v0_8-whitegrid')
+        fig, ax = plt.subplots(1, 1, figsize=(12, 8))
+        
+        # 理論曲線用のデータ準備
+        all_T_values = []
+        for delay in sorted_delays:
+            for alg_name in delay_groups[delay]:
+                if plot_type["use_actual_T"]:
+                    all_T_values.append(delay_groups[delay][alg_name]["T_actual"])
+                else:
+                    all_T_values.append(delay_groups[delay][alg_name]["T_target"])
+        
+        representative_T = np.mean(all_T_values)
+        
+        # 理論曲線を計算（範囲を調整）
+        if plot_type["use_actual_T"]:
+            # Actual_Tの場合：Δ/T = 21まで
+            max_delta_over_T = 21
+        else:
+            # Target_Tの場合：Δ/T = 10まで
+            max_delta_over_T = 10
+        
+        delta_max_theory = max_delta_over_T * representative_T
+        delta_min = min(sorted_delays)
+        delta_smooth = np.linspace(delta_min, delta_max_theory, 200)
+        
+        theory_smooth = []
+        for delta in delta_smooth:
+            r_A_th, _, _, _, _ = compute_theoretical_values(alpha_fixed, representative_T, delta)
+            theory_smooth.append(r_A_th)
+        
+        x_smooth = delta_smooth / representative_T
+        
+        # 統一された理論曲線をプロット（赤い実線）
+        ax.plot(x_smooth, theory_smooth, color="red", lw=3, 
+               label=f"Theory (α={alpha_fixed})", zorder=10)
+        
+        # 各遅延値でグルーピングしてプロット
+        plotted_algorithms = set()
+        for delay in sorted_delays:
+            group_data = delay_groups[delay]
+            
+            # 同じ遅延値のデータを近くに配置
+            for alg_name in group_data:
+                config = PLOT_CONFIG[alg_name]
+                data_point = group_data[alg_name]
+                
+                if plot_type["use_actual_T"]:
+                    x_val = delay / data_point["T_actual"]
+                else:
+                    x_val = delay / data_point["T_target"]
+                
+                y_val = data_point["r_A"]
+                
+                # 各アルゴリズムの最初のデータポイントのみ凡例に表示
+                is_first_plot = alg_name not in plotted_algorithms
+                if is_first_plot:
+                    print(f"DEBUG: Plotting {alg_name} at delay {delay}, x={x_val:.4f}, y={y_val:.4f}")
+                    plotted_algorithms.add(alg_name)
+                
+                ax.scatter(x_val, y_val, s=50, alpha=0.8, 
+                          color=config["color"], label=config["label"] if is_first_plot else "", 
+                          marker=config["marker"], edgecolors='black', linewidth=0.5)
+        
+        # 軸とラベルの設定
+        if plot_type["use_actual_T"]:
+            ax.set_xlabel(r"$\Delta/T$", fontsize=14)
+        else:
+            ax.set_xlabel(r"$\Delta/T_m$", fontsize=14)
+        ax.set_ylabel("r_A", fontsize=14)
+        ax.legend(fontsize=12, loc='best')
+        ax.grid(True, alpha=0.3)
+        
+        # X軸の範囲を適切に設定
+        all_x_values = []
+        for delay in sorted_delays:
+            group_data = delay_groups[delay]
+            for alg_name in group_data:
+                data_point = group_data[alg_name]
+                if plot_type["use_actual_T"]:
+                    x_val = delay / data_point["T_actual"]
+                else:
+                    x_val = delay / data_point["T_target"]
+                all_x_values.append(x_val)
+        
+        if all_x_values:
+            x_min = min(all_x_values)
+            x_max = max(all_x_values)
+            # 少し余裕を持たせる
+            x_range = x_max - x_min
+            ax.set_xlim(x_min - 0.1 * x_range, x_max + 0.1 * x_range)
+            print(f"DEBUG: Set X-axis range to [{x_min:.4f}, {x_max:.4f}]")
+        
+        # Y軸の範囲も適切に設定
+        all_y_values = []
+        for delay in sorted_delays:
+            group_data = delay_groups[delay]
+            for alg_name in group_data:
+                all_y_values.append(group_data[alg_name]["r_A"])
+        
+        if all_y_values:
+            y_min = min(all_y_values)
+            y_max = max(all_y_values)
+            # 少し余裕を持たせる
+            y_range = y_max - y_min
+            ax.set_ylim(y_min - 0.05 * y_range, y_max + 0.05 * y_range)
+            print(f"DEBUG: Set Y-axis range to [{y_min:.4f}, {y_max:.4f}]")
+        
+        fig.tight_layout()
+        
+        # ファイル保存
+        output_base = f"{output_dir}/r_A_comparison_{plot_type['title_suffix']}"
+        output_png = f"{output_base}.png"
+        output_svg = f"{output_base}.svg"
+        output_pdf = f"{output_base}.pdf"
+        
+        plt.savefig(output_png, dpi=300, bbox_inches='tight')
+        plt.savefig(output_svg, format='svg', bbox_inches='tight')
+        plt.savefig(output_pdf, format='pdf', bbox_inches='tight')
+        
+        print(f"Saved r_A comparison ({plot_type['label']}) to: {output_png}")
+        print(f"Saved r_A comparison ({plot_type['label']}) to: {output_svg}")
+        print(f"Saved r_A comparison ({plot_type['label']}) to: {output_pdf}")
+        
+        # JSON出力
+        json_data = {
+            "metadata": {
+                "variable": "r_A",
+                "T_type": plot_type["label"],
+                "alpha_fixed": float(alpha_fixed),
+                "generated_at": datetime.now().isoformat(),
+                "description": f"r_A data with {plot_type['label']} grouped by delay values"
+            },
+            "delay_groups": {}
+        }
+        
+        for delay in sorted_delays:
+            group_data = delay_groups[delay]
+            json_data["delay_groups"][str(delay)] = {}
+            
+            for alg_name in group_data:
+                data_point = group_data[alg_name]
+                if plot_type["use_actual_T"]:
+                    x_val = delay / data_point["T_actual"]
+                    T_used = data_point["T_actual"]
+                else:
+                    x_val = delay / data_point["T_target"]
+                    T_used = data_point["T_target"]
+                
+                json_data["delay_groups"][str(delay)][alg_name] = {
+                    "Delta": float(delay),
+                    "T_used": float(T_used),
+                    "Delta_over_T": float(x_val),
+                    "r_A": float(data_point["r_A"])
+                }
+        
+        output_json = f"{output_base}.json"
+        with open(output_json, 'w', encoding='utf-8') as f:
+            json.dump(json_data, f, indent=2, ensure_ascii=False)
+        
+        print(f"Saved r_A data ({plot_type['label']}) to: {output_json}")
+        
+        if show_plot:
+            try:
+                plt.show()
+            except Exception:
+                pass
+        plt.close()
 
 
 def main() -> None:
@@ -381,15 +669,11 @@ def main() -> None:
     # プロット表示設定
     show_plot = False
     
-    # 各変数の比較プロットを作成
-    variables = ["r_A", "pi_A", "pi_O", "W_A", "W_O"]
+    # r_A用の特別な比較プロット（動的TとターゲットT）を作成
+    print(f"\nCreating r_A comparison plots (Actual T vs Target T)...")
+    create_r_A_comparison_plots(all_data, output_dir, alpha_fixed, show_plot)
     
-    for var in variables:
-        print(f"\nCreating comparison plot for {var}...")
-        create_comparison_plot(var, all_data, f"{output_dir}/{var}_comparison", 
-                             show_plot, alpha_fixed)
-    
-    print(f"\nAll comparison plots saved to directory: {output_dir}")
+    print(f"\nr_A comparison plots saved to directory: {output_dir}")
     print("\nTo use this script properly, please update the DATA_DIRS dictionary")
     print("at the top of the file with the actual paths to your three data directories:")
     print("- no_adjustment: path to directory with no difficulty adjustment data")
