@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import glob
 import os
 import numpy as np
+import json
 from pathlib import Path
 from datetime import datetime
 from typing import Tuple
@@ -318,6 +319,88 @@ def plot_share_vs_hashrate_ratio(node_data, output_dir="analysis"):
     print(f"Mining share efficiency plot saved to: {output_pdf}")
     plt.close()
 
+def output_miner0_comparison_json(node_data, output_dir="analysis"):
+    """Miner 0の理論値と実験値の比較データをJSONで出力"""
+    # BTC_TARGET_GENERATION_TIME = 600000 (config.hより)
+    BTC_TARGET_GENERATION_TIME = 600000
+    
+    # データを整理
+    delays = sorted(node_data.keys())
+    delta_t_ratios = [delay / BTC_TARGET_GENERATION_TIME for delay in delays]
+    
+    # Miner 0のハッシュレート割合を計算
+    hashrate_ratios = calculate_hashrate_ratios()
+    miner0_hashrate_ratio = hashrate_ratios[0]
+    alpha_miner0 = miner0_hashrate_ratio
+    
+    # 比較データを準備
+    comparison_data = {
+        "metadata": {
+            "miner_id": 0,
+            "hashrate_ratio": miner0_hashrate_ratio,
+            "alpha": alpha_miner0,
+            "btc_target_generation_time": BTC_TARGET_GENERATION_TIME,
+            "timestamp": datetime.now().isoformat()
+        },
+        "data_points": []
+    }
+    
+    for i, delay in enumerate(delays):
+        delta_t_ratio = delta_t_ratios[i]
+        
+        # 実験値を取得
+        experimental_value = 0
+        if 0 in node_data[delay]:
+            experimental_value = node_data[delay][0]
+        
+        # 理論値を計算
+        r_A, pi_A, pi_O, W_A, W_O = compute_theoretical_values(alpha_miner0, BTC_TARGET_GENERATION_TIME, delay)
+        theoretical_value = r_A
+        
+        # 差分と相対誤差を計算
+        difference = experimental_value - theoretical_value
+        relative_error = 0
+        if theoretical_value != 0:
+            relative_error = (difference / theoretical_value) * 100
+        
+        data_point = {
+            "delay": delay,
+            "delta_t_ratio": delta_t_ratio,
+            "experimental_value": experimental_value,
+            "theoretical_value": theoretical_value,
+            "difference": difference,
+            "relative_error_percent": relative_error,
+            "theoretical_components": {
+                "r_A": r_A,
+                "pi_A": pi_A,
+                "pi_O": pi_O,
+                "W_A": W_A,
+                "W_O": W_O
+            }
+        }
+        
+        comparison_data["data_points"].append(data_point)
+    
+    # JSONファイルに保存
+    output_json = os.path.join(output_dir, "miner0_data.json")
+    with open(output_json, 'w', encoding='utf-8') as f:
+        json.dump(comparison_data, f, ensure_ascii=False, indent=2)
+    
+    print(f"Miner 0 comparison data saved to: {output_json}")
+    
+    # 統計情報を表示
+    if comparison_data["data_points"]:
+        differences = [dp["difference"] for dp in comparison_data["data_points"]]
+        relative_errors = [dp["relative_error_percent"] for dp in comparison_data["data_points"]]
+        
+        print(f"\nMiner 0 Comparison Statistics:")
+        print(f"  Mean absolute difference: {np.mean(np.abs(differences)):.6f}")
+        print(f"  Max absolute difference: {np.max(np.abs(differences)):.6f}")
+        print(f"  Mean relative error: {np.mean(np.abs(relative_errors)):.2f}%")
+        print(f"  Max relative error: {np.max(np.abs(relative_errors)):.2f}%")
+    
+    return output_json
+
 def main():
     """メイン処理"""
     # 最新のデータディレクトリを自動検出
@@ -329,7 +412,7 @@ def main():
     # 最新のディレクトリを選択
     latest_dir = max(data_dirs, key=os.path.getctime)
     print(f"Using data directory: {latest_dir}")
-    latest_dir = "data/real-hashrate-dist-ver2"
+    latest_dir = "data/20250915_184343"
     
     # データを収集
     node_data = collect_node_data(latest_dir)
@@ -355,6 +438,9 @@ def main():
     # グラフ3: マイニングシェア効率
     plot_share_vs_hashrate_ratio(node_data, output_dir)
     
+    # JSON出力: Miner 0の理論値と実験値の比較
+    json_output_path = output_miner0_comparison_json(node_data, output_dir)
+    
     # ハッシュレート割合を表示
     hashrate_ratios = calculate_hashrate_ratios()
     print("\nハッシュレート割合:")
@@ -362,6 +448,7 @@ def main():
         print(f"Miner {miner}: {hashrate_ratios[miner]:.4f} ({hashrate_ratios[miner]*100:.2f}%)")
     
     print(f"\nAll plots saved to directory: {output_dir}")
+    print(f"Miner 0 comparison data saved to: {json_output_path}")
 
 if __name__ == "__main__":
     main()

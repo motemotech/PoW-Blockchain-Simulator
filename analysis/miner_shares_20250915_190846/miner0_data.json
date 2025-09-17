@@ -1,0 +1,71 @@
+{
+  "metadata": {
+    "miner_id": 0,
+    "hashrate_ratio": 0.279383,
+    "alpha": 0.279383,
+    "btc_target_generation_time": 600000,
+    "timestamp": "2025-09-15T19:08:48.160405"
+  },
+  "data_points": [
+    {
+      "delay": 6000,
+      "delta_t_ratio": 0.01,
+      "experimental_value": 0.27934,
+      "theoretical_value": 0.2805122542513784,
+      "difference": -0.0011722542513784018,
+      "relative_error_percent": -0.41789769737756177,
+      "theoretical_components": {
+        "r_A": 0.2805122542513784,
+        "pi_A": 0.2799478485011419,
+        "pi_O": 0.720052151498858,
+        "W_A": 1.0,
+        "W_O": 0.0007838400997227551
+      }
+    },
+    {
+      "delay": 12000,
+      "delta_t_ratio": 0.02,
+      "experimental_value": 0.27958,
+      "theoretical_value": 0.28165008410787146,
+      "difference": -0.0020700841078714616,
+      "relative_error_percent": -0.7349843741138822,
+      "theoretical_components": {
+        "r_A": 0.28165008410787146,
+        "pi_A": 0.2805174349989863,
+        "pi_O": 0.7194825650010137,
+        "W_A": 1.0,
+        "W_O": 0.0015742551160827453
+      }
+    },
+    {
+      "delay": 24000,
+      "delta_t_ratio": 0.04,
+      "experimental_value": 0.28292,
+      "theoretical_value": 0.2839513094188736,
+      "difference": -0.0010313094188735827,
+      "relative_error_percent": -0.36319938829802556,
+      "theoretical_components": {
+        "r_A": 0.2839513094188736,
+        "pi_A": 0.2816707862960747,
+        "pi_O": 0.7183292137039252,
+        "W_A": 1.0,
+        "W_O": 0.0031747603735058885
+      }
+    },
+    {
+      "delay": 60000,
+      "delta_t_ratio": 0.1,
+      "experimental_value": 0.28987,
+      "theoretical_value": 0.291056514032666,
+      "difference": -0.0011865140326660084,
+      "relative_error_percent": -0.40765761130941147,
+      "theoretical_components": {
+        "r_A": 0.291056514032666,
+        "pi_A": 0.2852435883272384,
+        "pi_O": 0.7147564116727616,
+        "W_A": 1.0,
+        "W_O": 0.008132736706514484
+      }
+    }
+  ]
+}

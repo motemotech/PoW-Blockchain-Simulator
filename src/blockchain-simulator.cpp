@@ -50,6 +50,10 @@ map<ll, vector<block*>> blocksByHeight;  // 高さ別のブロック一覧
 vector<ll> blockGenerationIntervals;  // 各ブロックの生成間隔（ブロック生成イベント間の時間差）
 ll lastBlockGenerationTime;  // 最後にブロックが生成された時刻
 
+// メインチェーンのブロック生成間隔記録用のデータ構造
+vector<ll> mainchainGenerationIntervals;  // メインチェーンブロックの生成間隔
+ll lastMainchainBlockTime;  // 最後にメインチェーンブロックが生成された時刻
+
 ll delay;
 
 bool chooseMainchain(block* block1, block* block2, int from, int to, int tie);
@@ -147,7 +151,7 @@ int main(int argc, char* argv[]) {
     }
     
     // CSVファイルのヘッダーを書き込み
-    w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O,avg_block_interval" << endl;
+    w_and_pi_file << "delay,pi_A,pi_O,w_A,w_O,avg_block_interval,avg_mainchain_interval" << endl;
 
     for (ll current_delay : Config::delayValues) {
         // ===== ハッシュレート設定（コメントアウト可能） =====
@@ -227,10 +231,21 @@ int main(int argc, char* argv[]) {
            avgBlockInterval = (double)totalInterval / (double)blockGenerationIntervals.size();
        }
        
-       w_and_pi_file << delay << "," << pi_A << "," << pi_O << "," << w_A << "," << w_O << "," << avgBlockInterval << endl;
+       // メインチェーンブロック生成間隔の平均値を計算
+       double avgMainchainInterval = 0.0;
+       if (!mainchainGenerationIntervals.empty()) {
+           ll totalMainchainInterval = 0;
+           for (ll interval : mainchainGenerationIntervals) {
+               totalMainchainInterval += interval;
+           }
+           avgMainchainInterval = (double)totalMainchainInterval / (double)mainchainGenerationIntervals.size();
+       }
+       
+       w_and_pi_file << delay << "," << pi_A << "," << pi_O << "," << w_A << "," << w_O << "," << avgBlockInterval << "," << avgMainchainInterval << endl;
        cout << "Recorded: delay=" << delay << ", pi_A=" << pi_A << ", pi_O=" << pi_O 
             << ", w_A=" << w_A << ", w_O=" << w_O << ", avg_interval=" << avgBlockInterval 
-            << " ms (" << blockGenerationIntervals.size() << " blocks)" << endl;
+            << " ms (" << blockGenerationIntervals.size() << " blocks), avg_mainchain_interval=" << avgMainchainInterval
+            << " ms (" << mainchainGenerationIntervals.size() << " mainchain blocks)" << endl;
     }
 
     cout << "--- All simulations finished. ---" << endl;
@@ -395,6 +410,13 @@ void finalizeBlocks(block* block1, int tie) {
             while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
                 finalizedBlock->finalized = true;
                 
+                // メインチェーンブロックの生成間隔を記録
+                if (lastMainchainBlockTime != -1) {
+                    ll mainchainInterval = finalizedBlock->time - lastMainchainBlockTime;
+                    mainchainGenerationIntervals.push_back(mainchainInterval);
+                }
+                lastMainchainBlockTime = finalizedBlock->time;
+                
                 if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
                     startedByAAndMinedByA++;
@@ -431,6 +453,13 @@ void finalizeBlocks(block* block1, int tie) {
             block* finalizedBlock = curBlock;
             while (finalizedBlock != nullptr && finalizedBlock->height > 0 && !finalizedBlock->finalized) {
                 finalizedBlock->finalized = true;
+                
+                // メインチェーンブロックの生成間隔を記録
+                if (lastMainchainBlockTime != -1) {
+                    ll mainchainInterval = finalizedBlock->time - lastMainchainBlockTime;
+                    mainchainGenerationIntervals.push_back(mainchainInterval);
+                }
+                lastMainchainBlockTime = finalizedBlock->time;
                 
                 if (finalizedBlock->minter == highestHashrateNode && roundStartedBy[finalizedBlock->height] == highestHashrateNode) {
                     startedByA++;
@@ -494,6 +523,10 @@ void reset() {
     // ブロック生成間隔記録用のデータ構造をクリア
     blockGenerationIntervals.clear();
     lastBlockGenerationTime = -1;  // 初回は-1で初期化
+
+    // メインチェーンブロック生成間隔記録用のデータ構造をクリア
+    mainchainGenerationIntervals.clear();
+    lastMainchainBlockTime = -1;  // 初回は-1で初期化
 
     return;
 }
