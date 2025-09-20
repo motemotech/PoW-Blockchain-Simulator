@@ -41,7 +41,7 @@ namespace Config {
     // };
 
     const std::vector<ll> BTC_DEFAULT_DELAY_VALUES = {
-        // BTC_TARGET_GENERATION_TIME / 100,
+        //BTC_TARGET_GENERATION_TIME / 100,
         // BTC_TARGET_GENERATION_TIME / 50,
         // BTC_TARGET_GENERATION_TIME / 25,
         //BTC_TARGET_GENERATION_TIME / 10,
@@ -60,9 +60,9 @@ namespace Config {
         //BTC_TARGET_GENERATION_TIME * 3,
         //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 3.5),
         //BTC_TARGET_GENERATION_TIME * 4,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 4.5),
-        //BTC_TARGET_GENERATION_TIME * 5,
-        //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 5.5),
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 4.5),
+        BTC_TARGET_GENERATION_TIME * 5,
+        static_cast<ll>(BTC_TARGET_GENERATION_TIME * 5.5),
        	//BTC_TARGET_GENERATION_TIME * 6,
         //static_cast<ll>(BTC_TARGET_GENERATION_TIME * 6.5),
         //BTC_TARGET_GENERATION_TIME * 7,
