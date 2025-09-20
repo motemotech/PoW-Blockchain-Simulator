@@ -89,7 +89,7 @@ def create_pie_chart():
     
     wedges, texts, autotexts = ax.pie(sizes, labels=display_labels, autopct=autopct_func, 
                                      startangle=90, colors=colors, explode=explode,
-                                     textprops={'fontsize': 10}, counterclock=False)
+                                     textprops={'fontsize': 14}, counterclock=False)
     
     # Add legend for hashrate distribution
     legend_labels = []
@@ -97,11 +97,11 @@ def create_pie_chart():
         legend_labels.append(f'miner {i}: {hashrate:.3f}%')
     
     # Add entry for other miners
-    legend_labels.append(f'miner 10-999: each {remaining_per_miner:.6f}%, total {total_remaining:.3f}%')
+    legend_labels.append(f'miner 10-999: total {total_remaining:.3f}%')
     
     # Place legend on the right side
     ax.legend(wedges, legend_labels, title="Hashrate Distribution", loc="center left", 
-              bbox_to_anchor=(1, 0.5, 0.5, 0.5), fontsize=9)
+              bbox_to_anchor=(1, 0.5, 0.5, 0.5), fontsize=14, title_fontsize=16)
     
     # Adjust layout
     plt.tight_layout()

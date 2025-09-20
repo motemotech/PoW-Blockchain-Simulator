@@ -328,7 +328,7 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
     
     # 統一された理論曲線をプロット（赤い実線）
     ax.plot(x_smooth, theory_smooth, color="red", lw=3, 
-           label=f"Theory (α={alpha_fixed})", zorder=10)
+           label=f"Theory (α={alpha_fixed})", zorder=1)
     
     # 各アルゴリズムのデータをプロット
     for alg_name, data in all_data.items():
@@ -366,18 +366,19 @@ def create_comparison_plot(variable_name: str, all_data: Dict[str, Dict],
         
         ax.scatter(x_vals, y_vals, s=50, alpha=0.8, 
                   color=config["color"], label=config["label"], 
-                  marker=config["marker"], edgecolors='black', linewidth=0.5)
+                  marker=config["marker"], edgecolors='black', linewidth=0.5, zorder=10)
     
     # 軸とラベルの設定
-    ax.set_xlabel(r"$\Delta/T$", fontsize=14)
+    ax.set_xlabel(r"$\Delta/T$", fontsize=18)
     
     if variable_name == "r_A":
-        ax.set_ylabel("r_A", fontsize=14)
+        ax.set_ylabel("$r_A$", fontsize=18)
     else:
-        ax.set_ylabel(f"${variable_name}$", fontsize=14)
+        ax.set_ylabel(f"${variable_name}$", fontsize=18)
     
-    ax.legend(fontsize=12, loc='best')
+    ax.legend(fontsize=16, loc='best')
     ax.grid(True, alpha=0.3)
+    ax.tick_params(axis='both', which='major', labelsize=16)
     
     # タイトルは学術論文では不要なので削除
     
@@ -493,7 +494,7 @@ def create_r_A_comparison_plots(all_data: Dict[str, Dict], output_dir: str,
         
         # 統一された理論曲線をプロット（赤い実線）
         ax.plot(x_smooth, theory_smooth, color="red", lw=3, 
-               label=f"Theory (α={alpha_fixed})", zorder=10)
+               label=f"Theory (α={alpha_fixed})", zorder=1)
         
         # 各遅延値でグルーピングしてプロット
         plotted_algorithms = set()
@@ -520,16 +521,17 @@ def create_r_A_comparison_plots(all_data: Dict[str, Dict], output_dir: str,
                 
                 ax.scatter(x_val, y_val, s=50, alpha=0.8, 
                           color=config["color"], label=config["label"] if is_first_plot else "", 
-                          marker=config["marker"], edgecolors='black', linewidth=0.5)
+                          marker=config["marker"], edgecolors='black', linewidth=0.5, zorder=10)
         
         # 軸とラベルの設定
         if plot_type["use_actual_T"]:
-            ax.set_xlabel(r"$\Delta/T$", fontsize=14)
+            ax.set_xlabel(r"$\Delta/T$", fontsize=18)
         else:
-            ax.set_xlabel(r"$\Delta/T_m$", fontsize=14)
-        ax.set_ylabel("r_A", fontsize=14)
-        ax.legend(fontsize=12, loc='best')
+            ax.set_xlabel(r"$\Delta/T_m$", fontsize=18)
+        ax.set_ylabel("$r_A$", fontsize=18)
+        ax.legend(fontsize=16, loc='best')
         ax.grid(True, alpha=0.3)
+        ax.tick_params(axis='both', which='major', labelsize=16)
         
         # X軸の範囲を適切に設定
         all_x_values = []

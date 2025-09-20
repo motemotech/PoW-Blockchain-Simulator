@@ -244,21 +244,22 @@ def create_individual_comparison_plot_with_variable_T(variable_name: str, Delta_
     ax.scatter(x_vals, data_values, s=40, alpha=0.8, label="Experimental Data", color="blue")
     ax.plot(delta_over_T_smooth, theory_smooth, color="crimson", lw=2.5, label=f"Theory (α={alpha_fixed})")
     
-    ax.set_xlabel(r"$\Delta/T$", fontsize=12)
+    ax.set_xlabel(r"$\Delta/T$", fontsize=24)
     
     # Set y-axis label based on variable
     if variable_name == "r_A":
-        ax.set_ylabel("r_A (mining share)", fontsize=12)
+        ax.set_ylabel("$r_A$", fontsize=24)
     else:
-        ax.set_ylabel(f"${variable_name}$", fontsize=12)
+        ax.set_ylabel(f"${variable_name}$", fontsize=24)
     
-    ax.legend(fontsize=10)
+    ax.legend(fontsize=20)
     ax.grid(True, alpha=0.3)
+    ax.tick_params(axis='both', which='major', labelsize=20)
     
     # Add metrics text with RMSE
     textstr = f'R²: {r2:.4f}\nRMSE: {rmse:.4f}'
     props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=10,
+    ax.text(0.05, 0.95, textstr, transform=ax.transAxes, fontsize=20,
             verticalalignment='top', bbox=props)
     
     fig.tight_layout()
